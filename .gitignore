@@ -1,0 +1,5 @@
+pong/dist/*
+pong/build/*
+*/__pycache__/*
+*.spec
+*.pyc

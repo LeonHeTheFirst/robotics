@@ -1,0 +1,74 @@
+brett.lapin@jhuapl.edu
+443-778-0963 (Work/Message)
+
+Introduction to Autonomous Mobile Robots Second Edition, Roland Siegwart, Illah, Nourbakhsh, Davide Scaramuzza
+	MIT Press, 2011, 
+
+Coordinate Systems
+
+Encironments: Ground,Air, Under water, Above water, Space
+Complexity(mobilidy, obstacle density), required speed of action/control, failure consequence
+
+3 Questions for Autonomous Vehicles
+	Where am I? (Understanding self)
+	Where am I going? (Understanding goal)
+	How do I get there? (Environment)
+	Must be able to answer these questions autonomously and accomplish #3
+
+	Go this way, then that way, avoid obstacles, failure recovery
+
+Estimated vs Actual Path,
+Control system tries to follow desired path, generating actual path. tries to get estimated path to equal desired path
+
+Robot must determine orientation/attitude/pose (same thing) in environment
+Vehicle frame of reference, global/inertial frame of reference
+camera has different fram of reference from vehicle, must translate over
+
+Roll: about x
+R_x(alpha) = [[1,   0, 	     0    ],
+			  [0,  cos(a), -sin(a)],
+			  [0,  sin(a),  cos(a)]]
+
+Pitch: about y
+R_y(beta) = [[cos(b),  0,  sin(b)],
+			 [0,       1,  0     ],
+			 [-sin(b), 0,  cos(b)]]
+
+Yaw: about z
+R_y(gamma) = [[cos(y),  -sin(y),  0],
+			 [sin(y),    cos(y),  0],
+			 [0,  		 0, 	  1]]
+
+R_zyx(y,b,a) = R_z(y) * R_y(b) * R_x(a) roll, then pitch, then yaw (multiplication in opposite order)
+
+R^T=R^-1, orthonormal
+
+Put origins on coordinate systems in HW
+
+Translation matrix T = [[1, 0, 0, x],
+						[0, 1, 0, y],
+						[0, 0, 1, z],
+						[0, 0, 0, 1]]
+
+Find derivation of rotational + translational matrix
+
+Convert from sensor coordinate systems to vehicle coordinate system
+Convert from vehicle fram of reference to inertial because desired path is in inertial frame
+
+
+
+Degrees of Freedome
+Differential Degrees of Freedom
+Degrees of Mobility
+Degrees of Steerability
+Degrees of Maneuverability
+
+# Vehicle State
+
+state_vector = [x, y, theta] # vehicle reference point, heading angle
+x_dot = -1 * V * sin(theta)
+y_dot = V * cos(theta)
+theta_dot = Omega
+input_vector = []
+
+
