@@ -21,6 +21,7 @@ CAR_LENGTH = 4
 CAR_SCREEN_WIDTH = 2
 CAR_HALF_LENGTH = 2
 CAR_HALF_SCREEN_WIDTH = 1
+WHEEL_RADIUS = 1
 SCREEN_WIDTH = 30 * PIX_PER_FOOT
 SCREEN_HEIGHT = 15 * PIX_PER_FOOT
 SCREEN_BUFFER = 2 * PIX_PER_FOOT
@@ -99,6 +100,9 @@ class Car():
         self.yaw += self.r_vel * (1 / FRAMERATE)
 
     def find_vel_from_psi(self):
+        self.x_vel = WHEEL_RADIUS * (self.psi_1 - self.psi_2 - self.psi_3 + self.psi_4)
+        self.y_vel = WHEEL_RADIUS * (self.psi_1 + self.psi_2 + self.psi_3 + self.psi_4)
+        self.r_vel = WHEEL_RADIUS * (self.psi_1 + self.psi_2 - self.psi_3 - self.psi_4)
         return
 
     def find_psi_from_vel(self, x_vel, y_vel, r_vel):
