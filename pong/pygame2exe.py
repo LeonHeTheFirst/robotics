@@ -1,7 +1,8 @@
-
 try:
     from distutils.core import setup
     import py2exe, pygame
+    # import build_exe
+    from py2exe import build_exe
     from modulefinder import Module
     import glob, fnmatch
     import sys, os, shutil
@@ -10,15 +11,15 @@ except ImportError as message:
     raise SystemExit("Unable to load module. %s" % str(message))
 
 #hack which fixes the pygame mixer and pygame font
-origIsSystemDLL = py2exe.build_exe.isSystemDLL # save the orginal before we edit it
+origIsSystemDLL = build_exe.isSystemDLL # save the orginal before we edit it
 def isSystemDLL(pathname):
     # checks if the freetype and ogg dll files are being included
     if os.path.basename(pathname).lower() in ("libfreetype-6.dll", "libogg-0.dll","sdl_ttf.dll"): # "sdl_ttf.dll" added by arit.
             return 0
     return origIsSystemDLL(pathname) # return the orginal function
-py2exe.build_exe.isSystemDLL = isSystemDLL # override the default function with this one
+build_exe.isSystemDLL = isSystemDLL # override the default function with this one
 
-class pygame2exe(py2exe.build_exe.py2exe): #This hack make sure that pygame default font is copied: no need to modify code for specifying default font
+class pygame2exe(build_exe.py2exe): #This hack make sure that pygame default font is copied: no need to modify code for specifying default font
     def copy_extensions(self, extensions):
         #Get pygame default font
         pygamedir = os.path.split(pygame.base.__file__)[0]
@@ -26,7 +27,7 @@ class pygame2exe(py2exe.build_exe.py2exe): #This hack make sure that pygame defa
 
         #Add font to list of extension to be copied
         extensions.append(Module("pygame.font", pygame_default_font))
-        py2exe.build_exe.py2exe.copy_extensions(self, extensions)
+        build_exe.py2exe.copy_extensions(self, extensions)
 
 class BuildExe:
     def __init__(self):
