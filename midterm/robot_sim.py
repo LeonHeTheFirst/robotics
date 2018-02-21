@@ -16,14 +16,13 @@ RED = (255, 0, 0)
 BLACK = (0, 0, 0)
 
 FRAMERATE = 60
-PIXELS_PER_FOOT = 40
-WIDTH = 30 * PIXELS_PER_FOOT
-HEIGHT = 15 * PIXELS_PER_FOOT
-BALL_RADIUS = 20
-PAD_WIDTH = 8
-PAD_HEIGHT = 80
-HALF_PAD_WIDTH = PAD_WIDTH // 2
-HALF_PAD_HEIGHT = PAD_HEIGHT // 2
+PIX_PER_FOOT = 40
+CAR_LENGTH = 4
+CAR_WIDTH = 2
+CAR_HALF_LENGTH = 2
+CAR_HALF_WIDTH = 1
+WIDTH = 30 * PIX_PER_FOOT
+HEIGHT = 15 * PIX_PER_FOOT
 robot_pos = [0, 0]
 ball_vel = [0, 0]
 paddle1_vel = 0
@@ -38,6 +37,10 @@ class Car():
         self.xpos = xpos
         self.ypos = ypos
         self.yaw = yaw
+        self.phi_1 = 0
+        self.phi_2 = 0
+        self.phi_3 = 0
+        self.phi_4 = 0
         self.x_vel = 0 # ft/s
         self.y_vel = 0 # ft/s
         self.r_vel = 0 # deg/s
@@ -45,24 +48,30 @@ class Car():
 
     def corners(self):
         yaw_rad = math.radians(self.yaw)
-        p1_y = self.ypos + (math.cos(yaw_rad) - 2 * math.sin(yaw_rad)) * PIXELS_PER_FOOT
-        p2_y = self.ypos + (-1 * math.cos(yaw_rad) - 2 * math.sin(yaw_rad)) * PIXELS_PER_FOOT
-        p3_y = self.ypos + (-1 * math.cos(yaw_rad) + 2 * math.sin(yaw_rad)) * PIXELS_PER_FOOT
-        p4_y = self.ypos + (math.cos(yaw_rad) + 2 * math.sin(yaw_rad)) * PIXELS_PER_FOOT
-        p1_x = self.xpos + (2 * math.cos(yaw_rad) + math.sin(yaw_rad)) * PIXELS_PER_FOOT
-        p2_x = self.xpos + (2 * math.cos(yaw_rad) - math.sin(yaw_rad)) * PIXELS_PER_FOOT
-        p3_x = self.xpos + (-2 * math.cos(yaw_rad) - math.sin(yaw_rad)) * PIXELS_PER_FOOT
-        p4_x = self.xpos + (-2 * math.cos(yaw_rad) + math.sin(yaw_rad)) * PIXELS_PER_FOOT
+        cos_yaw = math.cos(yaw_rad)
+        sin_yaw = math.sin(yaw_rad)
+        p1_x = self.xpos + (-CAR_HALF_WIDTH * cos_yaw + CAR_HALF_LENGTH * sin_yaw) * PIX_PER_FOOT
+        p2_x = self.xpos + (CAR_HALF_WIDTH * cos_yaw + CAR_HALF_LENGTH * sin_yaw) * PIX_PER_FOOT
+        p3_x = self.xpos + (-CAR_HALF_WIDTH * cos_yaw - CAR_HALF_LENGTH * sin_yaw) * PIX_PER_FOOT
+        p4_x = self.xpos + (CAR_HALF_WIDTH * cos_yaw - CAR_HALF_LENGTH * sin_yaw) * PIX_PER_FOOT
+        p1_y = self.ypos + (CAR_HALF_LENGTH * cos_yaw + CAR_HALF_WIDTH * sin_yaw) * PIX_PER_FOOT
+        p2_y = self.ypos + (CAR_HALF_LENGTH * cos_yaw - CAR_HALF_WIDTH * sin_yaw) * PIX_PER_FOOT
+        p3_y = self.ypos + (-CAR_HALF_LENGTH * cos_yaw + CAR_HALF_WIDTH * sin_yaw) * PIX_PER_FOOT
+        p4_y = self.ypos + (-CAR_HALF_LENGTH * cos_yaw - CAR_HALF_WIDTH * sin_yaw) * PIX_PER_FOOT
         # print('point 1: ', p1_x, ',', p1_y)
         # print('point 2: ', p2_x, ',', p2_y)
         # print('point 3: ', p3_x, ',', p3_y)
         # print('point 4: ', p4_x, ',', p4_y)
-        return [[p1_x, p1_y], [p2_x, p2_y], [p3_x, p3_y], [p4_x, p4_y]]
+        return [[p2_x, p2_y], [p1_x, p1_y], [p3_x, p3_y], [p4_x, p4_y]]
 
     def front_point(self):
         yaw_rad = math.radians(self.yaw)
-        p_x = int(self.xpos + (1.8 * math.cos(yaw_rad)) * PIXELS_PER_FOOT)
-        p_y = int(self.ypos - (1.8 * math.sin(yaw_rad)) * PIXELS_PER_FOOT)
+        p_y = int(self.ypos - (1.8 * math.cos(yaw_rad)) * PIX_PER_FOOT)
+        p_x = int(self.xpos - (1.8 * math.sin(yaw_rad)) * PIX_PER_FOOT)
+        # print('xpos: ', self.xpos)
+        # print('ypos: ', self.ypos)
+        # print('cos: ', math.cos(yaw_rad))
+        # print('sin: ', math.sin(yaw_rad))
         return [p_x, p_y]
 
     def position(self):
@@ -73,8 +82,8 @@ class Car():
         self.ypos = ypos
 
     def update(self):
-        self.xpos += self.x_vel * PIXELS_PER_FOOT * (1 / FRAMERATE)
-        self.ypos += self.y_vel * PIXELS_PER_FOOT * (1 / FRAMERATE)
+        self.xpos += self.x_vel * PIX_PER_FOOT * (1 / FRAMERATE)
+        self.ypos -= self.y_vel * PIX_PER_FOOT * (1 / FRAMERATE)
         self.yaw += self.r_vel * (1 / FRAMERATE)
 
     # def draw(self, canvas):
@@ -100,10 +109,10 @@ class Car():
     #     rot_sprite.fill(ORANGE)
     #     return rot_sprite
 
-my_car = Car(200, 200)
+my_car = Car(500, 500)
 my_car.x_vel = 1
 my_car.y_vel = 1
-my_car.r_vel = 1
+my_car.r_vel = 10
 
 window = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
 pygame.display.set_caption('Robotics Simulation')
@@ -142,7 +151,7 @@ def draw(canvas):
     # robot_pos[0] += int(ball_vel[0])
     # robot_pos[1] += int(ball_vel[1])
     # 6X6 Grid
-    margin = int(0.5 * PIXELS_PER_FOOT)
+    margin = int(0.5 * PIX_PER_FOOT)
     for column in range(0, WIDTH, margin):
         for row in range(0, HEIGHT, margin):
             pygame.draw.rect(canvas, WHITE, [column,row,WIDTH,HEIGHT], 1)
@@ -150,7 +159,7 @@ def draw(canvas):
     # pygame.draw.rect(canvas, WHITE, (robot_pos, (10,10)), 0)
     pygame.draw.polygon(canvas, GREEN, my_car.corners())
     # Front indicator
-    pygame.draw.circle(canvas, RED, my_car.front_point(), int(0.1 * PIXELS_PER_FOOT))
+    pygame.draw.circle(canvas, RED, my_car.front_point(), int(0.1 * PIX_PER_FOOT))
     # my_car.rotate(5)
     # my_car.yaw += 0.5
 
@@ -158,13 +167,6 @@ def draw(canvas):
     # rot_surface = my_car.rot_center()
     # print(rot_surface)
     # canvas.blit(rot_surface, my_car.position())
-
-    # Wheels
-    # pygame.draw.rect(canvas, WHITE, (robot_pos, (20,10)), 0)
-    # pygame.draw.rect(canvas, WHITE, (robot_pos, (20,10)), 0)
-    # pygame.draw.rect(canvas, WHITE, (robot_pos, (20,10)), 0)
-    # pygame.draw.rect(canvas, WHITE, (robot_pos, (20,10)), 0)
-
 
     myfont1 = pygame.font.SysFont(None, 20)
     label1 = myfont1.render("X Position " + str(my_car.xpos), 1, (255, 255, 0))
