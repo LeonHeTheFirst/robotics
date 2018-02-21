@@ -40,10 +40,10 @@ class Car():
         self.xpos_actual = xpos / PIX_PER_FOOT
         self.ypos_actual = (SCREEN_HEIGHT - ypos) / PIX_PER_FOOT
         self.yaw = yaw
-        self.phi_1 = 0
-        self.phi_2 = 0
-        self.phi_3 = 0
-        self.phi_4 = 0
+        self.psi_1 = 0 # rad/s
+        self.psi_2 = 0 # rad/s
+        self.psi_3 = 0 # rad/s
+        self.psi_4 = 0 # rad/s
         self.x_vel = 0 # ft/s
         self.y_vel = 0 # ft/s
         self.r_vel = 0 # deg/s
@@ -98,6 +98,12 @@ class Car():
         self.ypos_actual += self.y_vel * (1 / FRAMERATE)
         self.yaw += self.r_vel * (1 / FRAMERATE)
 
+    def find_vel_from_psi(self):
+        return
+
+    def find_psi_from_vel(self, x_vel, y_vel, r_vel):
+        return
+
     # def draw(self, canvas):
     #     # self.surface.fill(ORANGE)
     #     # self.surface.blit(self, (self.xpos, self.ypos))
@@ -131,16 +137,8 @@ pygame.display.set_caption('Robotics Simulation')
 
 
 def robot_init(right):
-    global robot_pos, ball_vel
+    global robot_pos
     robot_pos = [SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2]
-    horz = random.randrange(2, 4)
-    vert = random.randrange(1, 3)
-
-    if right == False:
-        horz = - horz
-
-    ball_vel = [horz, -vert]
-
 
 def init():
     if random.randrange(0, 2) == 0:
@@ -152,7 +150,6 @@ def reset():
     global my_car
     my_car.set_position(SCREEN_WIDTH/2, SCREEN_HEIGHT/2)
     my_car.yaw = 0
-
 
 def draw(canvas):
     global paddle1_pos, paddle2_pos, robot_pos, ball_vel, l_score, r_score, my_car
