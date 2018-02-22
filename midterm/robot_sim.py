@@ -102,7 +102,7 @@ class Car():
     def find_vel_from_psi(self):
         self.x_vel = WHEEL_RADIUS * (self.psi_1 - self.psi_2 - self.psi_3 + self.psi_4)
         self.y_vel = WHEEL_RADIUS * (self.psi_1 + self.psi_2 + self.psi_3 + self.psi_4)
-        self.r_vel = WHEEL_RADIUS * (self.psi_1 + self.psi_2 - self.psi_3 - self.psi_4)
+        self.r_vel = WHEEL_RADIUS * (-1 * self.psi_1 + self.psi_2 - self.psi_3 + self.psi_4)
         return
 
     def find_psi_from_vel(self, x_vel, y_vel, r_vel):
@@ -132,9 +132,12 @@ class Car():
     #     return rot_sprite
 
 my_car = Car(SCREEN_WIDTH/2, SCREEN_HEIGHT/2)
-my_car.x_vel = 10
-my_car.y_vel = 10
-my_car.r_vel = 10
+# my_car.x_vel = 10
+# my_car.y_vel = 10
+# my_car.r_vel = 10
+my_car.psi_1 = 1
+my_car.psi_2 = 1
+my_car.find_vel_from_psi()
 
 window = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
 pygame.display.set_caption('Robotics Simulation')
