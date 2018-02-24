@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 
-import random
-import pygame
-import sys
+from PyQt5.QtWidgets import QWidget, QPushButton, QFrame, QApplication, QLabel, QLineEdit
+from PyQt5.QtGui import QColor
 import math
+import pygame
+import random
+import sys
 
 pygame.init()
 fps = pygame.time.Clock()
@@ -13,14 +15,15 @@ WHITE = (255, 255, 255)
 ORANGE = (255,140,0)
 GREEN = (0, 255, 0)
 RED = (255, 0, 0)
+YELLOW = (255, 255, 0)
 BLACK = (0, 0, 0)
 
 FRAMERATE = 60
 PIX_PER_FOOT = 40
 CAR_LENGTH = 4
-CAR_SCREEN_WIDTH = 2
+CAR_WIDTH = 2
 CAR_HALF_LENGTH = 2
-CAR_HALF_SCREEN_WIDTH = 1
+CAR_HALF_WIDTH = 1
 WHEEL_RADIUS = 1
 SCREEN_WIDTH = 30 * PIX_PER_FOOT
 SCREEN_HEIGHT = 15 * PIX_PER_FOOT
@@ -38,8 +41,8 @@ class Car():
         # length = 2ft
         self.xpos = xpos
         self.ypos = ypos
-        self.xpos_actual = xpos / PIX_PER_FOOT
-        self.ypos_actual = (SCREEN_HEIGHT - ypos) / PIX_PER_FOOT
+        self.xpos_actual = 0
+        self.ypos_actual = 0
         self.yaw = yaw
         self.psi_1 = 0 # rad/s
         self.psi_2 = 0 # rad/s
@@ -54,28 +57,20 @@ class Car():
         yaw_rad = math.radians(self.yaw)
         cos_yaw = math.cos(yaw_rad)
         sin_yaw = math.sin(yaw_rad)
-        p1_x = self.xpos + (-CAR_HALF_SCREEN_WIDTH * cos_yaw + CAR_HALF_LENGTH * sin_yaw) * PIX_PER_FOOT
-        p2_x = self.xpos + (CAR_HALF_SCREEN_WIDTH * cos_yaw + CAR_HALF_LENGTH * sin_yaw) * PIX_PER_FOOT
-        p3_x = self.xpos + (-CAR_HALF_SCREEN_WIDTH * cos_yaw - CAR_HALF_LENGTH * sin_yaw) * PIX_PER_FOOT
-        p4_x = self.xpos + (CAR_HALF_SCREEN_WIDTH * cos_yaw - CAR_HALF_LENGTH * sin_yaw) * PIX_PER_FOOT
-        p1_y = self.ypos + (CAR_HALF_LENGTH * cos_yaw + CAR_HALF_SCREEN_WIDTH * sin_yaw) * PIX_PER_FOOT
-        p2_y = self.ypos + (CAR_HALF_LENGTH * cos_yaw - CAR_HALF_SCREEN_WIDTH * sin_yaw) * PIX_PER_FOOT
-        p3_y = self.ypos + (-CAR_HALF_LENGTH * cos_yaw + CAR_HALF_SCREEN_WIDTH * sin_yaw) * PIX_PER_FOOT
-        p4_y = self.ypos + (-CAR_HALF_LENGTH * cos_yaw - CAR_HALF_SCREEN_WIDTH * sin_yaw) * PIX_PER_FOOT
-        # print('point 1: ', p1_x, ',', p1_y)
-        # print('point 2: ', p2_x, ',', p2_y)
-        # print('point 3: ', p3_x, ',', p3_y)
-        # print('point 4: ', p4_x, ',', p4_y)
+        p1_x = self.xpos + (-CAR_HALF_WIDTH * cos_yaw + CAR_HALF_LENGTH * sin_yaw) * PIX_PER_FOOT
+        p2_x = self.xpos + (CAR_HALF_WIDTH * cos_yaw + CAR_HALF_LENGTH * sin_yaw) * PIX_PER_FOOT
+        p3_x = self.xpos + (-CAR_HALF_WIDTH * cos_yaw - CAR_HALF_LENGTH * sin_yaw) * PIX_PER_FOOT
+        p4_x = self.xpos + (CAR_HALF_WIDTH * cos_yaw - CAR_HALF_LENGTH * sin_yaw) * PIX_PER_FOOT
+        p1_y = self.ypos + (CAR_HALF_LENGTH * cos_yaw + CAR_HALF_WIDTH * sin_yaw) * PIX_PER_FOOT
+        p2_y = self.ypos + (CAR_HALF_LENGTH * cos_yaw - CAR_HALF_WIDTH * sin_yaw) * PIX_PER_FOOT
+        p3_y = self.ypos + (-CAR_HALF_LENGTH * cos_yaw + CAR_HALF_WIDTH * sin_yaw) * PIX_PER_FOOT
+        p4_y = self.ypos + (-CAR_HALF_LENGTH * cos_yaw - CAR_HALF_WIDTH * sin_yaw) * PIX_PER_FOOT
         return [[p2_x, p2_y], [p1_x, p1_y], [p3_x, p3_y], [p4_x, p4_y]]
 
     def front_point(self):
         yaw_rad = math.radians(self.yaw)
         p_y = int(self.ypos - (1.8 * math.cos(yaw_rad)) * PIX_PER_FOOT)
         p_x = int(self.xpos - (1.8 * math.sin(yaw_rad)) * PIX_PER_FOOT)
-        # print('xpos: ', self.xpos)
-        # print('ypos: ', self.ypos)
-        # print('cos: ', math.cos(yaw_rad))
-        # print('sin: ', math.sin(yaw_rad))
         return [p_x, p_y]
 
     def position(self):
@@ -98,46 +93,167 @@ class Car():
         self.xpos_actual += self.x_vel * (1 / FRAMERATE)
         self.ypos_actual += self.y_vel * (1 / FRAMERATE)
         self.yaw += self.r_vel * (1 / FRAMERATE)
+        if self.yaw > 360 or self.yaw < 0:
+            self.yaw %= 360
 
     def find_vel_from_psi(self):
-        self.x_vel = WHEEL_RADIUS * (self.psi_1 - self.psi_2 - self.psi_3 + self.psi_4)
-        self.y_vel = WHEEL_RADIUS * (self.psi_1 + self.psi_2 + self.psi_3 + self.psi_4)
-        self.r_vel = WHEEL_RADIUS * (-1 * self.psi_1 + self.psi_2 - self.psi_3 + self.psi_4)
+        self.x_vel = WHEEL_RADIUS * (self.psi_1 - self.psi_2 - self.psi_3 + self.psi_4) / 4
+        self.y_vel = WHEEL_RADIUS * (self.psi_1 + self.psi_2 + self.psi_3 + self.psi_4) / 4
+        self.r_vel = WHEEL_RADIUS * (self.psi_2 - self.psi_3 + self.psi_4 - self.psi_1) / \
+                     (4 * (CAR_HALF_LENGTH + CAR_HALF_WIDTH))
         return
 
-    def find_psi_from_vel(self, x_vel, y_vel, r_vel):
+    def find_psi_from_vel(self):
+        yaw_rad = math.radians(self.yaw)
         return
 
-    # def draw(self, canvas):
-    #     # self.surface.fill(ORANGE)
-    #     # self.surface.blit(self, (self.xpos, self.ypos))
+    def find_psi_from_desired_vel_cartesian(self, x_vel, y_vel, r_vel):
+        speed = math.sqrt(x_vel * x_vel + y_vel * y_vel)
+        direction = 0
+        if x_vel == 0:
+            if y_vel > 0:
+                direction = 90
+            else:
+                direction = 270
+        else:
+            direction = math.tan(y_vel / x_vel)
+        self.find_psi_from_desired_vel_polar(speed, direction)
+        self.r_vel = r_vel
+        return
 
-    # def rotated_surface(self):
-    #     """rotate an image while keeping its center and size"""
-    #     orig_rect = self.surface.get_rect()
-    #     rot_image = pygame.transform.rotate(self.surface, self.yaw)
-    #     rot_rect = orig_rect.copy()
-    #     rot_rect.center = rot_image.get_rect().center
-    #     rot_image = rot_image.subsurface(rot_rect).copy()
-    #     rot_image.fill(ORANGE)
-    #     return rot_image
+    def find_psi_from_desired_vel_polar(self, speed, direction):
+        yaw_rad = math.radians(self.yaw)
+        dir_rad = math.radians(direction)
+        V_cx = speed * math.cos(dir_rad - (yaw_rad + self.r_vel * (1 / FRAMERATE)))
+        V_cy = speed * math.sin(dir_rad - (yaw_rad + self.r_vel * (1 / FRAMERATE)))
+        omega_c = self.r_vel
+        self.psi_1 = (1 / WHEEL_RADIUS) * (V_cy + V_cx - (CAR_HALF_LENGTH + CAR_HALF_WIDTH) * omega_c)
+        self.psi_2 = (1 / WHEEL_RADIUS) * (V_cy - V_cx + (CAR_HALF_LENGTH + CAR_HALF_WIDTH) * omega_c)
+        self.psi_3 = (1 / WHEEL_RADIUS) * (V_cy - V_cx - (CAR_HALF_LENGTH + CAR_HALF_WIDTH) * omega_c)
+        self.psi_4 = (1 / WHEEL_RADIUS) * (V_cy + V_cx + (CAR_HALF_LENGTH + CAR_HALF_WIDTH) * omega_c)
+        return
 
-    # def rot_center(self):
-    #     """rotate a Surface, maintaining position."""
+class RobotMenu(QWidget):
+    
+    def __init__(self):
+        super().__init__()
+        
+        self.initUI()
 
-    #     # loc = self.surface.get_rect().center
-    #     # rot_sprite = pygame.transform.rotate(self.surface, self.yaw)
-    #     rot_sprite.get_rect().center = loc
-    #     rot_sprite.fill(ORANGE)
-    #     return rot_sprite
+    def closeEvent(self, event):
+        exit(0)
+        event.accept()
+        
+        
+    def initUI(self):
+
+        self.psi_1_lbl = QLabel(self)
+        self.psi_1_lbl.setText('Desired Psi 1 (deg/s): ')
+        self.psi_1_field = QLineEdit(self)
+        self.psi_1_lbl.move(10, 40)
+        self.psi_1_field.move(120, 36)
+        self.psi_1_field.textChanged[str].connect(self.onChanged)
+
+        self.psi_2_lbl = QLabel(self)
+        self.psi_2_lbl.setText('Desired Psi 2 (deg/s): ')
+        self.psi_2_field = QLineEdit(self)
+        self.psi_2_lbl.move(10, 60)
+        self.psi_2_field.move(120, 56)
+        self.psi_2_field.textChanged[str].connect(self.onChanged)
+
+        self.psi_3_lbl = QLabel(self)
+        self.psi_3_lbl.setText('Desired Psi 3 (deg/s): ')
+        self.psi_3_field = QLineEdit(self)
+        self.psi_3_lbl.move(10, 80)
+        self.psi_3_field.move(120, 76)
+        self.psi_3_field.textChanged[str].connect(self.onChanged)
+
+        self.psi_4_lbl = QLabel(self)
+        self.psi_4_lbl.setText('Desired Psi 4 (deg/s): ')
+        self.psi_4_field = QLineEdit(self)
+        self.psi_4_lbl.move(10, 100)
+        self.psi_4_field.move(120, 96)
+        self.psi_4_field.textChanged[str].connect(self.onChanged)
+        
+        self.set_psi_button = QPushButton('Set Psi', self)
+        self.set_psi_button.move(120, 120)
+        self.set_psi_button.clicked[bool].connect(self.setPsi)
+
+        self.x_vel_lbl = QLabel(self)
+        self.x_vel_lbl.setText('Desired X Vel (ft/s): ')
+        self.x_vel_field = QLineEdit(self)
+        self.x_vel_lbl.move(10, 160)
+        self.x_vel_field.move(150, 156)
+        self.x_vel_field.textChanged[str].connect(self.onChanged)
+
+        self.y_vel_lbl = QLabel(self)
+        self.y_vel_lbl.setText('Desired Y Vel (ft/s): ')
+        self.y_vel_field = QLineEdit(self)
+        self.y_vel_lbl.move(10, 180)
+        self.y_vel_field.move(150, 176)
+        self.y_vel_field.textChanged[str].connect(self.onChanged)
+
+        self.r_vel_lbl = QLabel(self)
+        self.r_vel_lbl.setText('Desired Angular Vel (deg/s): ')
+        self.r_vel_field = QLineEdit(self)
+        self.r_vel_lbl.move(10, 200)
+        self.r_vel_field.move(150, 196)
+        self.r_vel_field.textChanged[str].connect(self.onChanged)
+        
+        self.set_vel_button = QPushButton('Set Vel', self)
+        self.set_vel_button.move(150, 220)
+        self.set_vel_button.clicked[bool].connect(self.setVel)
+
+        self.setGeometry(200, 200, 500, 500)
+        self.setWindowTitle('Robot Menu')
+        self.show()
+
+    def setPsi(self, pressed):
+        global my_car
+        my_car.psi_1 = float(self.psi_1_field.text())
+        my_car.psi_2 = float(self.psi_2_field.text())
+        my_car.psi_3 = float(self.psi_3_field.text())
+        my_car.psi_4 = float(self.psi_4_field.text())
+        my_car.find_vel_from_psi()
+
+    def setVel(self, pressed):
+        global my_car
+        my_car.x_vel = float(self.x_vel_field.text())
+        my_car.y_vel = float(self.y_vel_field.text())
+        my_car.r_vel = float(self.r_vel_field.text())
+        my_car.find_psi_from_desired_vel_cartesian(my_car.x_vel, my_car.y_vel, my_car.r_vel)
+
+    def onChanged(self, text):
+        pass
+        
+    def setColor(self, pressed):
+        
+        source = self.sender()
+        
+        if pressed:
+            val = 255
+        else: val = 0
+                        
+        if source.text() == "Red":
+            self.col.setRed(val)                
+        elif source.text() == "Green":
+            self.col.setGreen(val)             
+        else:
+            self.col.setBlue(val) 
+            
+        self.square.setStyleSheet("QFrame { background-color: %s }" %
+            self.col.name())
+        reset()
 
 my_car = Car(SCREEN_WIDTH/2, SCREEN_HEIGHT/2)
 # my_car.x_vel = 10
 # my_car.y_vel = 10
 # my_car.r_vel = 10
-my_car.psi_1 = 1
-my_car.psi_2 = 1
-my_car.find_vel_from_psi()
+# my_car.psi_1 = 2
+# my_car.psi_2 = 1
+# my_car.psi_3 = 1
+# my_car.psi_4 = 1
+# my_car.find_vel_from_psi()
 
 window = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
 pygame.display.set_caption('Robotics Simulation')
@@ -156,7 +272,16 @@ def init():
 def reset():
     global my_car
     my_car.set_position(SCREEN_WIDTH/2, SCREEN_HEIGHT/2)
+    my_car.xpos_actual = 0
+    my_car.ypos_actual = 0
     my_car.yaw = 0
+    my_car.psi_1 = 0
+    my_car.psi_2 = 0
+    my_car.psi_3 = 0
+    my_car.psi_4 = 0
+    my_car.x_vel = 0
+    my_car.y_vel = 0
+    my_car.r_vel = 0
 
 def draw(canvas):
     global paddle1_pos, paddle2_pos, robot_pos, ball_vel, l_score, r_score, my_car
@@ -183,13 +308,27 @@ def draw(canvas):
     # print(rot_surface)
     # canvas.blit(rot_surface, my_car.position())
 
-    myfont1 = pygame.font.SysFont(None, 20)
-    label1 = myfont1.render("X Position " + str(my_car.xpos_actual), 1, (255, 255, 0))
-    label2 = myfont1.render("Y Position " + str(my_car.ypos_actual), 1, (255, 255, 0))
-    label3 = myfont1.render("Yaw " + str(my_car.yaw), 1, (255, 255, 0))
+    myfont1 = pygame.font.SysFont(None, 30)
+    label1 = myfont1.render("X Position: " + str(my_car.xpos_actual), 1, RED)
+    label2 = myfont1.render("Y Position: " + str(my_car.ypos_actual), 1, RED)
+    label3 = myfont1.render("Yaw: " + str(my_car.yaw), 1, RED)
+    label4 = myfont1.render("X Vel: " + str(my_car.x_vel), 1, RED)
+    label5 = myfont1.render("Y Vel: " + str(my_car.y_vel), 1, RED)
+    label6 = myfont1.render("Angular Vel: " + str(my_car.r_vel), 1, RED)
+    label7 = myfont1.render("Psi_1: " + str(my_car.psi_1), 1, RED)
+    label8 = myfont1.render("Psi_2: " + str(my_car.psi_2), 1, RED)
+    label9 = myfont1.render("Psi_3: " + str(my_car.psi_3), 1, RED)
+    label10 = myfont1.render("Psi_4: " + str(my_car.psi_4), 1, RED)
     canvas.blit(label1, (50, 20))
-    canvas.blit(label2, (50, 30))
-    canvas.blit(label3, (50, 40))
+    canvas.blit(label2, (50, 40))
+    canvas.blit(label3, (50, 60))
+    canvas.blit(label4, (50, 80))
+    canvas.blit(label5, (50, 100))
+    canvas.blit(label6, (50, 120))
+    canvas.blit(label7, (50, 140))
+    canvas.blit(label8, (50, 160))
+    canvas.blit(label9, (50, 180))
+    canvas.blit(label10, (50, 200))
 
 
 def keydown(event):
@@ -207,6 +346,18 @@ def keyup(event):
     elif event.key in (pygame.K_UP, pygame.K_DOWN):
         paddle2_vel = 0
 
+app = QApplication(sys.argv)
+
+ex = RobotMenu()
+# ex.resize(500, 500)
+ex.setWindowTitle('Simulation Menu')
+# w = QWidget()
+# w.resize(500, 500)
+# # w.move(0, 0)
+# w.setWindowTitle('Menu')
+# w.show()
+
+# app.exec_()
 
 init()
 
