@@ -95,11 +95,12 @@ class Car():
         self.yaw += self.r_vel * (1 / FRAMERATE)
         if self.yaw > 360 or self.yaw < 0:
             self.yaw %= 360
+        self.find_psi_from_desired_vel_cartesian(self.x_vel, self.y_vel, self.r_vel)
 
     def find_vel_from_psi(self):
         self.x_vel = WHEEL_RADIUS * (self.psi_1 - self.psi_2 - self.psi_3 + self.psi_4) / 4
         self.y_vel = WHEEL_RADIUS * (self.psi_1 + self.psi_2 + self.psi_3 + self.psi_4) / 4
-        self.r_vel = WHEEL_RADIUS * (self.psi_2 - self.psi_3 + self.psi_4 - self.psi_1) / \
+        self.r_vel = (180 / math.pi) * WHEEL_RADIUS * (self.psi_2 - self.psi_3 + self.psi_4 - self.psi_1) / \
                      (4 * (CAR_HALF_LENGTH + CAR_HALF_WIDTH))
         return
 
@@ -109,14 +110,21 @@ class Car():
 
     def find_psi_from_desired_vel_cartesian(self, x_vel, y_vel, r_vel):
         speed = math.sqrt(x_vel * x_vel + y_vel * y_vel)
-        direction = 0
-        if x_vel == 0:
-            if y_vel > 0:
-                direction = 90
-            else:
-                direction = 270
-        else:
-            direction = math.tan(y_vel / x_vel)
+        direction = math.degrees(math.atan2(y_vel, x_vel))
+        if direction < 0:
+            direction += 360
+        # if x_vel == 0:
+        #     if y_vel > 0:
+        #         direction = 0
+        #     elif y_vel < 0:
+        #         direction = 180
+        #     else:
+        #         direction = 0
+        # else:
+        #     if x_vel > 0:
+        #         direction = math.tan(y_vel / x_vel)
+        #     else:
+        #         direction = -1 * math.tan(y_vel / x_vel)
         self.find_psi_from_desired_vel_polar(speed, direction)
         self.r_vel = r_vel
         return
@@ -124,9 +132,14 @@ class Car():
     def find_psi_from_desired_vel_polar(self, speed, direction):
         yaw_rad = math.radians(self.yaw)
         dir_rad = math.radians(direction)
-        V_cx = speed * math.cos(dir_rad - (yaw_rad + self.r_vel * (1 / FRAMERATE)))
-        V_cy = speed * math.sin(dir_rad - (yaw_rad + self.r_vel * (1 / FRAMERATE)))
-        omega_c = self.r_vel
+        rvel_rad = math.radians(self.r_vel)
+        V_cx = speed * math.cos(dir_rad - (yaw_rad + rvel_rad * (1 / FRAMERATE)))
+        V_cy = speed * math.sin(dir_rad - (yaw_rad + rvel_rad * (1 / FRAMERATE)))
+        # print('dir: ', math.degrees(dir_rad))
+        # print('speed: ', speed)
+        # print('V_cx: ', V_cx)
+        # print('V_cy: ', V_cy)
+        omega_c = rvel_rad
         self.psi_1 = (1 / WHEEL_RADIUS) * (V_cy + V_cx - (CAR_HALF_LENGTH + CAR_HALF_WIDTH) * omega_c)
         self.psi_2 = (1 / WHEEL_RADIUS) * (V_cy - V_cx + (CAR_HALF_LENGTH + CAR_HALF_WIDTH) * omega_c)
         self.psi_3 = (1 / WHEEL_RADIUS) * (V_cy - V_cx - (CAR_HALF_LENGTH + CAR_HALF_WIDTH) * omega_c)
@@ -222,6 +235,7 @@ class RobotMenu(QWidget):
         my_car.y_vel = float(self.y_vel_field.text())
         my_car.r_vel = float(self.r_vel_field.text())
         my_car.find_psi_from_desired_vel_cartesian(my_car.x_vel, my_car.y_vel, my_car.r_vel)
+        my_car.find_vel_from_psi()
 
     def onChanged(self, text):
         pass
@@ -309,16 +323,16 @@ def draw(canvas):
     # canvas.blit(rot_surface, my_car.position())
 
     myfont1 = pygame.font.SysFont(None, 30)
-    label1 = myfont1.render("X Position: " + str(my_car.xpos_actual), 1, RED)
-    label2 = myfont1.render("Y Position: " + str(my_car.ypos_actual), 1, RED)
-    label3 = myfont1.render("Yaw: " + str(my_car.yaw), 1, RED)
-    label4 = myfont1.render("X Vel: " + str(my_car.x_vel), 1, RED)
-    label5 = myfont1.render("Y Vel: " + str(my_car.y_vel), 1, RED)
-    label6 = myfont1.render("Angular Vel: " + str(my_car.r_vel), 1, RED)
-    label7 = myfont1.render("Psi_1: " + str(my_car.psi_1), 1, RED)
-    label8 = myfont1.render("Psi_2: " + str(my_car.psi_2), 1, RED)
-    label9 = myfont1.render("Psi_3: " + str(my_car.psi_3), 1, RED)
-    label10 = myfont1.render("Psi_4: " + str(my_car.psi_4), 1, RED)
+    label1 = myfont1.render("X Position: " + str(round(my_car.xpos_actual, 2)), 1, RED)
+    label2 = myfont1.render("Y Position: " + str(round(my_car.ypos_actual, 2)), 1, RED)
+    label3 = myfont1.render("Yaw: " + str(round(my_car.yaw, 2)), 1, RED)
+    label4 = myfont1.render("X Vel: " + str(round(my_car.x_vel, 2)), 1, RED)
+    label5 = myfont1.render("Y Vel: " + str(round(my_car.y_vel, 2)), 1, RED)
+    label6 = myfont1.render("Angular Vel: " + str(round(my_car.r_vel, 2)), 1, RED)
+    label7 = myfont1.render("Psi_1: " + str(round(my_car.psi_1, 2)), 1, RED)
+    label8 = myfont1.render("Psi_2: " + str(round(my_car.psi_2, 2)), 1, RED)
+    label9 = myfont1.render("Psi_3: " + str(round(my_car.psi_3, 2)), 1, RED)
+    label10 = myfont1.render("Psi_4: " + str(round(my_car.psi_4, 2)), 1, RED)
     canvas.blit(label1, (50, 20))
     canvas.blit(label2, (50, 40))
     canvas.blit(label3, (50, 60))
