@@ -302,25 +302,17 @@ def draw(canvas):
 
     canvas.fill(BLACK)
 
-    # robot_pos[0] += int(ball_vel[0])
-    # robot_pos[1] += int(ball_vel[1])
     # 6X6 Grid
     margin = int(0.5 * PIX_PER_FOOT)
     for column in range(0, SCREEN_WIDTH, margin):
         for row in range(0, SCREEN_HEIGHT, margin):
             pygame.draw.rect(canvas, WHITE, [column,row,SCREEN_WIDTH,SCREEN_HEIGHT], 1)
-    # Body of car
-    # pygame.draw.rect(canvas, WHITE, (robot_pos, (10,10)), 0)
+    # Draw the car
     pygame.draw.polygon(canvas, GREEN, my_car.corners())
     # Front indicator
     pygame.draw.circle(canvas, RED, my_car.front_point(), int(0.1 * PIX_PER_FOOT))
-    # my_car.rotate(5)
-    # my_car.yaw += 0.5
 
     my_car.update()
-    # rot_surface = my_car.rot_center()
-    # print(rot_surface)
-    # canvas.blit(rot_surface, my_car.position())
 
     myfont1 = pygame.font.SysFont(None, 30)
     label1 = myfont1.render("X Position: " + str(round(my_car.xpos_actual, 2)), 1, RED)
