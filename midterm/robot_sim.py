@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-from PyQt5.QtWidgets import QWidget, QPushButton, QFrame, QApplication, QLabel, QLineEdit
-from PyQt5.QtGui import QColor
+from PyQt5.QtWidgets import QWidget, QPushButton, QApplication, QLabel, QLineEdit
+# from PyQt5.QtGui import QColor
 import math
 import pygame
 import random
@@ -225,25 +225,6 @@ class RobotMenu(QWidget):
 
     def onChanged(self, text):
         pass
-        
-    def setColor(self, pressed):
-        
-        source = self.sender()
-        
-        if pressed:
-            val = 255
-        else: val = 0
-                        
-        if source.text() == "Red":
-            self.col.setRed(val)                
-        elif source.text() == "Green":
-            self.col.setGreen(val)             
-        else:
-            self.col.setBlue(val) 
-            
-        self.square.setStyleSheet("QFrame { background-color: %s }" %
-            self.col.name())
-        reset()
 
 my_car = Car(SCREEN_WIDTH/2, SCREEN_HEIGHT/2)
 # my_car.x_vel = 10
