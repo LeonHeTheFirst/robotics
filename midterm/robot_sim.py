@@ -30,10 +30,16 @@ SCREEN_HEIGHT = 15 * PIX_PER_FOOT
 SCREEN_BUFFER = 2 * PIX_PER_FOOT
 robot_pos = [0, 0]
 ball_vel = [0, 0]
-paddle1_vel = 0
-paddle2_vel = 0
 l_score = 0
 r_score = 0
+control_mode = ''
+
+
+def str_to_float(string):
+    if len(string) == 0:
+        return 0.0
+    else:
+        return float(string)
 
 class Car():
     def __init__(self, xpos, ypos, yaw=0):
@@ -98,8 +104,13 @@ class Car():
         self.find_psi_from_desired_vel_cartesian(self.x_vel, self.y_vel, self.r_vel)
 
     def find_vel_from_psi(self):
-        self.x_vel = WHEEL_RADIUS * (self.psi_1 - self.psi_2 - self.psi_3 + self.psi_4) / 4
-        self.y_vel = WHEEL_RADIUS * (self.psi_1 + self.psi_2 + self.psi_3 + self.psi_4) / 4
+        rframe_x_vel = WHEEL_RADIUS * (self.psi_1 - self.psi_2 - self.psi_3 + self.psi_4) / 4
+        rframe_y_vel = WHEEL_RADIUS * (self.psi_1 + self.psi_2 + self.psi_3 + self.psi_4) / 4
+        yaw_rad = math.radians(self.yaw)
+        cos_yaw = math.cos(yaw_rad)
+        sin_yaw = math.sin(yaw_rad)
+        self.x_vel = cos_yaw * rframe_x_vel - sin_yaw * rframe_y_vel
+        self.y_vel = cos_yaw * rframe_y_vel + sin_yaw * rframe_x_vel
         self.r_vel = (180 / math.pi) * WHEEL_RADIUS * (self.psi_2 - self.psi_3 + self.psi_4 - self.psi_1) / \
                      (4 * (CAR_HALF_LENGTH + CAR_HALF_WIDTH))
         return
@@ -113,18 +124,6 @@ class Car():
         direction = math.degrees(math.atan2(y_vel, x_vel))
         if direction < 0:
             direction += 360
-        # if x_vel == 0:
-        #     if y_vel > 0:
-        #         direction = 0
-        #     elif y_vel < 0:
-        #         direction = 180
-        #     else:
-        #         direction = 0
-        # else:
-        #     if x_vel > 0:
-        #         direction = math.tan(y_vel / x_vel)
-        #     else:
-        #         direction = -1 * math.tan(y_vel / x_vel)
         self.find_psi_from_desired_vel_polar(speed, direction)
         self.r_vel = r_vel
         return
@@ -135,16 +134,21 @@ class Car():
         rvel_rad = math.radians(self.r_vel)
         V_cx = speed * math.cos(dir_rad - (yaw_rad + rvel_rad * (1 / FRAMERATE)))
         V_cy = speed * math.sin(dir_rad - (yaw_rad + rvel_rad * (1 / FRAMERATE)))
-        # print('dir: ', math.degrees(dir_rad))
-        # print('speed: ', speed)
-        # print('V_cx: ', V_cx)
-        # print('V_cy: ', V_cy)
         omega_c = rvel_rad
         self.psi_1 = (1 / WHEEL_RADIUS) * (V_cy + V_cx - (CAR_HALF_LENGTH + CAR_HALF_WIDTH) * omega_c)
         self.psi_2 = (1 / WHEEL_RADIUS) * (V_cy - V_cx + (CAR_HALF_LENGTH + CAR_HALF_WIDTH) * omega_c)
         self.psi_3 = (1 / WHEEL_RADIUS) * (V_cy - V_cx - (CAR_HALF_LENGTH + CAR_HALF_WIDTH) * omega_c)
         self.psi_4 = (1 / WHEEL_RADIUS) * (V_cy + V_cx + (CAR_HALF_LENGTH + CAR_HALF_WIDTH) * omega_c)
         return
+
+    def stop(self):
+        self.psi_1 = 0
+        self.psi_2 = 0
+        self.psi_3 = 0
+        self.psi_4 = 0
+        self.x_vel = 0
+        self.y_vel = 0
+        self.r_vel = 0
 
 class RobotMenu(QWidget):
     
@@ -160,82 +164,111 @@ class RobotMenu(QWidget):
         
     def initUI(self):
 
+        # Specify Psi Values
         self.psi_1_lbl = QLabel(self)
-        self.psi_1_lbl.setText('Desired Psi 1 (deg/s): ')
+        self.psi_1_lbl.setText('Desired Psi 1 (rad/s): ')
         self.psi_1_field = QLineEdit(self)
         self.psi_1_lbl.move(10, 40)
         self.psi_1_field.move(120, 36)
-        self.psi_1_field.textChanged[str].connect(self.onChanged)
 
         self.psi_2_lbl = QLabel(self)
-        self.psi_2_lbl.setText('Desired Psi 2 (deg/s): ')
+        self.psi_2_lbl.setText('Desired Psi 2 (rad/s): ')
         self.psi_2_field = QLineEdit(self)
         self.psi_2_lbl.move(10, 60)
         self.psi_2_field.move(120, 56)
-        self.psi_2_field.textChanged[str].connect(self.onChanged)
 
         self.psi_3_lbl = QLabel(self)
-        self.psi_3_lbl.setText('Desired Psi 3 (deg/s): ')
+        self.psi_3_lbl.setText('Desired Psi 3 (rad/s): ')
         self.psi_3_field = QLineEdit(self)
         self.psi_3_lbl.move(10, 80)
         self.psi_3_field.move(120, 76)
-        self.psi_3_field.textChanged[str].connect(self.onChanged)
 
         self.psi_4_lbl = QLabel(self)
-        self.psi_4_lbl.setText('Desired Psi 4 (deg/s): ')
+        self.psi_4_lbl.setText('Desired Psi 4 (rad/s): ')
         self.psi_4_field = QLineEdit(self)
         self.psi_4_lbl.move(10, 100)
         self.psi_4_field.move(120, 96)
-        self.psi_4_field.textChanged[str].connect(self.onChanged)
         
         self.set_psi_button = QPushButton('Set Psi', self)
         self.set_psi_button.move(120, 120)
         self.set_psi_button.clicked[bool].connect(self.setPsi)
 
+        # Specify X and Y Velocities
         self.x_vel_lbl = QLabel(self)
         self.x_vel_lbl.setText('Desired X Vel (ft/s): ')
         self.x_vel_field = QLineEdit(self)
         self.x_vel_lbl.move(10, 160)
         self.x_vel_field.move(150, 156)
-        self.x_vel_field.textChanged[str].connect(self.onChanged)
 
         self.y_vel_lbl = QLabel(self)
         self.y_vel_lbl.setText('Desired Y Vel (ft/s): ')
         self.y_vel_field = QLineEdit(self)
         self.y_vel_lbl.move(10, 180)
         self.y_vel_field.move(150, 176)
-        self.y_vel_field.textChanged[str].connect(self.onChanged)
 
         self.r_vel_lbl = QLabel(self)
         self.r_vel_lbl.setText('Desired Angular Vel (deg/s): ')
         self.r_vel_field = QLineEdit(self)
         self.r_vel_lbl.move(10, 200)
         self.r_vel_field.move(150, 196)
-        self.r_vel_field.textChanged[str].connect(self.onChanged)
         
         self.set_vel_button = QPushButton('Set Vel', self)
         self.set_vel_button.move(150, 220)
         self.set_vel_button.clicked[bool].connect(self.setVel)
+
+        # Specify Velocity and Direction
+        self.speed_lbl = QLabel(self)
+        self.speed_lbl.setText('Desired Speed (ft/s): ')
+        self.speed_field = QLineEdit(self)
+        self.speed_lbl.move(10, 280)
+        self.speed_field.move(150, 276)
+
+        self.direction_lbl = QLabel(self)
+        self.direction_lbl.setText('Desired Angle (degrees): ')
+        self.direction_field = QLineEdit(self)
+        self.direction_lbl.move(10, 300)
+        self.direction_field.move(150, 296)
+
+        self.r_polar_vel_lbl = QLabel(self)
+        self.r_polar_vel_lbl.setText('Desired Angular Vel (deg/s): ')
+        self.r_polar_vel_field = QLineEdit(self)
+        self.r_polar_vel_lbl.move(10, 320)
+        self.r_polar_vel_field.move(150, 316)
+        
+        self.set_polar_vel_button = QPushButton('Set Vel', self)
+        self.set_polar_vel_button.move(150, 340)
+        self.set_polar_vel_button.clicked[bool].connect(self.setPolarVel)
 
         self.setGeometry(200, 200, 500, 500)
         self.setWindowTitle('Robot Menu')
         self.show()
 
     def setPsi(self, pressed):
-        global my_car
-        my_car.psi_1 = float(self.psi_1_field.text())
-        my_car.psi_2 = float(self.psi_2_field.text())
-        my_car.psi_3 = float(self.psi_3_field.text())
-        my_car.psi_4 = float(self.psi_4_field.text())
+        global my_car, control_mode
+        my_car.psi_1 = str_to_float(self.psi_1_field.text())
+        my_car.psi_2 = str_to_float(self.psi_2_field.text())
+        my_car.psi_3 = str_to_float(self.psi_3_field.text())
+        my_car.psi_4 = str_to_float(self.psi_4_field.text())
         my_car.find_vel_from_psi()
+        control_mode = 'manual'
 
     def setVel(self, pressed):
-        global my_car
-        my_car.x_vel = float(self.x_vel_field.text())
-        my_car.y_vel = float(self.y_vel_field.text())
-        my_car.r_vel = float(self.r_vel_field.text())
+        global my_car, control_mode
+        my_car.x_vel = str_to_float(self.x_vel_field.text())
+        my_car.y_vel = str_to_float(self.y_vel_field.text())
+        my_car.r_vel = str_to_float(self.r_vel_field.text())
         my_car.find_psi_from_desired_vel_cartesian(my_car.x_vel, my_car.y_vel, my_car.r_vel)
         my_car.find_vel_from_psi()
+        control_mode = 'manual'
+
+    def setPolarVel(self, pressed):
+        global my_car, control_mode
+        speed = str_to_float(self.speed_field.text())
+        direction = str_to_float(self.direction_field.text())
+        my_car.r_vel = str_to_float(self.r_vel_field.text())
+        my_car.find_psi_from_desired_vel_polar(speed, direction)
+        my_car.find_vel_from_psi()
+        control_mode = 'manual'
 
     def onChanged(self, text):
         pass
@@ -279,7 +312,7 @@ def reset():
     my_car.r_vel = 0
 
 def draw(canvas):
-    global paddle1_pos, paddle2_pos, robot_pos, ball_vel, l_score, r_score, my_car
+    global robot_pos, ball_vel, l_score, r_score, my_car
 
     canvas.fill(BLACK)
 
@@ -296,16 +329,16 @@ def draw(canvas):
     my_car.update()
 
     myfont1 = pygame.font.SysFont(None, 30)
-    label1 = myfont1.render("X Position: " + str(round(my_car.xpos_actual, 2)), 1, RED)
-    label2 = myfont1.render("Y Position: " + str(round(my_car.ypos_actual, 2)), 1, RED)
-    label3 = myfont1.render("Yaw: " + str(round(my_car.yaw, 2)), 1, RED)
-    label4 = myfont1.render("X Vel: " + str(round(my_car.x_vel, 2)), 1, RED)
-    label5 = myfont1.render("Y Vel: " + str(round(my_car.y_vel, 2)), 1, RED)
-    label6 = myfont1.render("Angular Vel: " + str(round(my_car.r_vel, 2)), 1, RED)
-    label7 = myfont1.render("Psi_1: " + str(round(my_car.psi_1, 2)), 1, RED)
-    label8 = myfont1.render("Psi_2: " + str(round(my_car.psi_2, 2)), 1, RED)
-    label9 = myfont1.render("Psi_3: " + str(round(my_car.psi_3, 2)), 1, RED)
-    label10 = myfont1.render("Psi_4: " + str(round(my_car.psi_4, 2)), 1, RED)
+    label1 = myfont1.render("X Position (ft): " + str(round(my_car.xpos_actual, 2)), 1, RED)
+    label2 = myfont1.render("Y Position (ft): " + str(round(my_car.ypos_actual, 2)), 1, RED)
+    label3 = myfont1.render("Yaw (deg): " + str(round(my_car.yaw, 2)), 1, RED)
+    label4 = myfont1.render("X Vel (ft/s): " + str(round(my_car.x_vel, 2)), 1, RED)
+    label5 = myfont1.render("Y Vel (ft/s): " + str(round(my_car.y_vel, 2)), 1, RED)
+    label6 = myfont1.render("Angular Vel (deg/s): " + str(round(my_car.r_vel, 2)), 1, RED)
+    label7 = myfont1.render("Psi_1 (rad/s): " + str(round(my_car.psi_1, 2)), 1, RED)
+    label8 = myfont1.render("Psi_2 (rad/s): " + str(round(my_car.psi_2, 2)), 1, RED)
+    label9 = myfont1.render("Psi_3 (rad/s): " + str(round(my_car.psi_3, 2)), 1, RED)
+    label10 = myfont1.render("Psi_4 (rad/s): " + str(round(my_car.psi_4, 2)), 1, RED)
     canvas.blit(label1, (50, 20))
     canvas.blit(label2, (50, 40))
     canvas.blit(label3, (50, 60))
@@ -319,9 +352,16 @@ def draw(canvas):
 
 
 def keydown(event):
-    global paddle1_vel, paddle2_vel
+    global my_car, control_mode
+    mods = pygame.key.get_mods()
 
-    if event.key == pygame.K_r:
+    if control_mode == 'manual':
+        my_car.stop()
+        control_mode = ''
+        return
+    if event.type == pygame.MOUSEBUTTONUP:
+        return
+    if event.key == pygame.K_r and mods & pygame.KMOD_CTRL:
         reset()
 
 
@@ -329,9 +369,9 @@ def keyup(event):
     global paddle1_vel, paddle2_vel
 
     if event.key in (pygame.K_w, pygame.K_s):
-        paddle1_vel = 0
+        pass
     elif event.key in (pygame.K_UP, pygame.K_DOWN):
-        paddle2_vel = 0
+        pass
 
 app = QApplication(sys.argv)
 
@@ -359,6 +399,8 @@ while True:
             keydown(event)
         elif event.type == pygame.KEYUP:
             keyup(event)
+        elif event.type == pygame.MOUSEBUTTONUP:
+            keydown(event)
         elif event.type == pygame.QUIT:
             pygame.quit()
             sys.exit()
