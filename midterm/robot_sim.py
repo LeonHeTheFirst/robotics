@@ -310,10 +310,16 @@ class RobotMenu(QWidget):
         my_car.find_vel_from_psi()
         control_mode = 'manual_vel'
 
-    def setDest(self):
+    def setDest(self, time):
         pass
 
-    def setPath(self):
+    def setPath(self, time):
+        pass
+
+    def setCircle(self):
+        pass
+
+    def setFigure8(self):
         pass
 
 
