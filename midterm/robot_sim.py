@@ -26,6 +26,7 @@ CAR_HALF_LENGTH = 2
 CAR_HALF_WIDTH = 1
 WHEEL_RADIUS = 1
 MAX_SPEED = 15 # ft/s
+ACCELERATION = 5 # ft/s/s
 SCREEN_WIDTH = 30 * PIX_PER_FOOT
 SCREEN_HEIGHT = 15 * PIX_PER_FOOT
 SCREEN_BUFFER = 2 * PIX_PER_FOOT
@@ -156,10 +157,31 @@ class Car():
         self.r_vel = 0
 
     def accelerate(self, desired_speed, desired_direction):
-        pass
+        if desired_speed > 15:
+            print('Warning: Desired speed is greater than 15 ft/s')
+            return
+        desired_x_vel = desired_speed * math.cos(math.radians(desired_direction))
+        desired_y_vel = desired_speed * math.sin(math.radians(desired_direction))
+        x_vel_delta = desired_x_vel - self.x_vel
+        y_vel_delta = desired_y_vel - self.y_vel
+        speed_delta = math.sqrt(x_vel_delta * x_vel_delta + y_vel_delta * y_vel_delta)
+        accel_direction = math.atan2(y_vel_delta, x_vel_delta)
+        yaw_rad = math.radians(self.yaw)
+        accel_dir_rad = math.radians(accel_direction)
+        rvel_rad = math.radians(self.r_vel)
+        A_cx = speed_delta * math.cos(accel_dir_rad - (yaw_rad + rvel_rad * (1 / FRAMERATE)))
+        A_cy = speed_delta * math.sin(accel_dir_rad - (yaw_rad + rvel_rad * (1 / FRAMERATE)))
+        self.psi_1 += (1 / WHEEL_RADIUS) * (A_cy + A_cx)
+        self.psi_2 += (1 / WHEEL_RADIUS) * (A_cy - A_cx)
+        self.psi_3 += (1 / WHEEL_RADIUS) * (A_cy - A_cx)
+        self.psi_4 += (1 / WHEEL_RADIUS) * (A_cy + A_cx)
+        return
 
-    def direction_to_point(self, point):
-        pass
+    def direction_to_point(self, point_x, point_y):
+        y_diff = point_y - self.ypos
+        x_diff = point_x - self.xpos
+        direction = math.degrees(math.atan2(y_diff, x_diff))
+        return direction
 
     def pid_control(self):
         pass
