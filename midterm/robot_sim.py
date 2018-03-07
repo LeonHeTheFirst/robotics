@@ -239,6 +239,10 @@ class RobotMenu(QWidget):
         self.set_polar_vel_button.move(150, 340)
         self.set_polar_vel_button.clicked[bool].connect(self.setPolarVel)
 
+        # Specify Point to Travel To
+
+        # Specify Path to Travel On
+
         self.setGeometry(200, 200, 500, 500)
         self.setWindowTitle('Robot Menu')
         self.show()
@@ -269,6 +273,12 @@ class RobotMenu(QWidget):
         my_car.find_psi_from_desired_vel_polar(speed, direction)
         my_car.find_vel_from_psi()
         control_mode = 'manual'
+
+    def setDest(self):
+        pass
+
+    def setPath(self):
+        pass
 
     def onChanged(self, text):
         pass
