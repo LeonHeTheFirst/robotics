@@ -157,6 +157,9 @@ class Car():
     def direction_to_point(self, point):
         pass
 
+    def pid_control(self):
+        pass
+
 class RobotMenu(QWidget):
     
     def __init__(self):
