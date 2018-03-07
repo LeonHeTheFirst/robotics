@@ -91,6 +91,7 @@ class Car():
         self.set_position(SCREEN_WIDTH/2, SCREEN_HEIGHT/2)
 
     def update(self):
+        global control_mode
         self.xpos += self.x_vel * PIX_PER_FOOT * (1 / FRAMERATE)
         self.ypos -= self.y_vel * PIX_PER_FOOT * (1 / FRAMERATE)
         if self.xpos < SCREEN_BUFFER or self.xpos > SCREEN_WIDTH - SCREEN_BUFFER:
@@ -102,7 +103,10 @@ class Car():
         self.yaw += self.r_vel * (1 / FRAMERATE)
         if self.yaw > 360 or self.yaw < 0:
             self.yaw %= 360
-        self.find_psi_from_desired_vel_cartesian(self.x_vel, self.y_vel, self.r_vel)
+        if control_mode == 'manual_vel':
+            self.find_psi_from_desired_vel_cartesian(self.x_vel, self.y_vel, self.r_vel)
+        if control_mode == 'manual_psi':
+            self.find_vel_from_psi()
 
     def find_vel_from_psi(self):
         rframe_x_vel = WHEEL_RADIUS * (self.psi_1 - self.psi_2 - self.psi_3 + self.psi_4) / 4
@@ -264,7 +268,7 @@ class RobotMenu(QWidget):
         my_car.psi_3 = str_to_float(self.psi_3_field.text())
         my_car.psi_4 = str_to_float(self.psi_4_field.text())
         my_car.find_vel_from_psi()
-        control_mode = 'manual'
+        control_mode = 'manual_psi'
 
     def setVel(self, pressed):
         global my_car, control_mode
@@ -273,7 +277,7 @@ class RobotMenu(QWidget):
         my_car.r_vel = str_to_float(self.r_vel_field.text())
         my_car.find_psi_from_desired_vel_cartesian(my_car.x_vel, my_car.y_vel, my_car.r_vel)
         my_car.find_vel_from_psi()
-        control_mode = 'manual'
+        control_mode = 'manual_vel'
 
     def setPolarVel(self, pressed):
         global my_car, control_mode
@@ -282,7 +286,7 @@ class RobotMenu(QWidget):
         my_car.r_vel = str_to_float(self.r_vel_field.text())
         my_car.find_psi_from_desired_vel_polar(speed, direction)
         my_car.find_vel_from_psi()
-        control_mode = 'manual'
+        control_mode = 'manual_vel'
 
     def setDest(self):
         pass
@@ -364,7 +368,7 @@ def keydown(event):
     global my_car, control_mode
     mods = pygame.key.get_mods()
 
-    if control_mode == 'manual':
+    if 'manual' in control_mode:
         my_car.stop()
         control_mode = ''
         return
