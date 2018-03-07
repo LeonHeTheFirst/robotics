@@ -25,6 +25,7 @@ CAR_WIDTH = 2
 CAR_HALF_LENGTH = 2
 CAR_HALF_WIDTH = 1
 WHEEL_RADIUS = 1
+MAX_SPEED = 15 # ft/s
 SCREEN_WIDTH = 30 * PIX_PER_FOOT
 SCREEN_HEIGHT = 15 * PIX_PER_FOOT
 SCREEN_BUFFER = 2 * PIX_PER_FOOT
@@ -149,6 +150,12 @@ class Car():
         self.x_vel = 0
         self.y_vel = 0
         self.r_vel = 0
+
+    def accelerate(self, desired_speed, desired_direction):
+        pass
+
+    def direction_to_point(self, point):
+        pass
 
 class RobotMenu(QWidget):
     
