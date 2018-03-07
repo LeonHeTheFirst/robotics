@@ -280,22 +280,11 @@ class RobotMenu(QWidget):
     def setPath(self):
         pass
 
-    def onChanged(self, text):
-        pass
 
 my_car = Car(SCREEN_WIDTH/2, SCREEN_HEIGHT/2)
-# my_car.x_vel = 10
-# my_car.y_vel = 10
-# my_car.r_vel = 10
-# my_car.psi_1 = 2
-# my_car.psi_2 = 1
-# my_car.psi_3 = 1
-# my_car.psi_4 = 1
-# my_car.find_vel_from_psi()
 
 window = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
 pygame.display.set_caption('Robotics Simulation')
-
 
 def robot_init(right):
     global robot_pos
@@ -386,15 +375,7 @@ def keyup(event):
 app = QApplication(sys.argv)
 
 ex = RobotMenu()
-# ex.resize(500, 500)
 ex.setWindowTitle('Simulation Menu')
-# w = QWidget()
-# w.resize(500, 500)
-# # w.move(0, 0)
-# w.setWindowTitle('Menu')
-# w.show()
-
-# app.exec_()
 
 init()
 
