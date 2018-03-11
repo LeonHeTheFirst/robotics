@@ -63,6 +63,8 @@ class Car():
         self.y_vel = 0 # ft/s
         self.r_vel = 0 # deg/s
         self.integral = 0
+        self.desired_path = []
+        self.actual_path = []
         # self.surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
 
     def corners(self):
@@ -105,6 +107,7 @@ class Car():
             self.reset_screen_pos()
         self.xpos_actual += self.x_vel * (1 / FRAMERATE)
         self.ypos_actual += self.y_vel * (1 / FRAMERATE)
+        self.actual_path.append((self.xpos_actual self.ypos_actual))
         self.yaw += self.r_vel * (1 / FRAMERATE)
         if self.yaw > 360 or self.yaw < 0:
             self.yaw %= 360
@@ -444,6 +447,9 @@ def reset():
     my_car.y_vel = 0
     my_car.r_vel = 0
     control_mode = 'none'
+
+def draw_point(canvas, color, pos):
+    canvas.fill(color, (pos, (1, 1)))
 
 def draw(canvas):
     global robot_pos, ball_vel, l_score, r_score, my_car
