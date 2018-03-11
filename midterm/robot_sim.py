@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from PyQt5.QtWidgets import QWidget, QPushButton, QApplication, QLabel, QLineEdit
+from PyQt5.QtWidgets import QWidget, QPushButton, QApplication, QLabel, QLineEdit, QMessageBox
 # from PyQt5.QtGui import QColor
 import math
 import pygame
@@ -26,15 +26,18 @@ CAR_HALF_LENGTH = 2
 CAR_HALF_WIDTH = 1
 WHEEL_RADIUS = 1
 MAX_SPEED = 15 # ft/s
-ACCELERATION = 5 # ft/s/s
+MAX_ACCELERATION = 1 # ft/s/s
+DIST_PRECISION = 0.01 # ft/s/s
+YAW_PRECISION = 0.01 # ft/s/s
+SPEED_PRECISION = 0.0001 # ft/s/s
 SCREEN_WIDTH = 30 * PIX_PER_FOOT
-SCREEN_HEIGHT = 15 * PIX_PER_FOOT
+SCREEN_HEIGHT = MAX_SPEED * PIX_PER_FOOT
 SCREEN_BUFFER = 2 * PIX_PER_FOOT
 robot_pos = [0, 0]
 ball_vel = [0, 0]
 l_score = 0
 r_score = 0
-control_mode = ''
+control_mode = 'none'
 
 
 def str_to_float(string):
@@ -59,6 +62,7 @@ class Car():
         self.x_vel = 0 # ft/s
         self.y_vel = 0 # ft/s
         self.r_vel = 0 # deg/s
+        self.integral = 0
         # self.surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
 
     def corners(self):
@@ -108,6 +112,41 @@ class Car():
             self.find_psi_from_desired_vel_cartesian(self.x_vel, self.y_vel, self.r_vel)
         if control_mode == 'manual_psi':
             self.find_vel_from_psi()
+        if control_mode == 'point_execution':
+            dist_x = self.dest_x - self.xpos_actual
+            dist_y = self.dest_y - self.ypos_actual
+            dist_yaw = self.dest_orientation - self.yaw
+            if math.fabs(dist_x) <= DIST_PRECISION and math.fabs(dist_y) <= DIST_PRECISION and math.fabs(dist_yaw) <= YAW_PRECISION:
+                control_mode = 'slowdown'
+                # self.x_vel = 0
+                # self.y_vel = 0
+                self.accelerate(0, 0)
+                self.r_vel = 0
+                self.time_to_take = 0
+                self.find_psi_from_desired_vel_cartesian(self.x_vel, self.y_vel, self.r_vel)
+                return
+            # self.x_vel = dist_x / self.time_to_take
+            # self.y_vel = dist_y / self.time_to_take
+            self.accelerate(dist_x / self.time_to_take, dist_y / self.time_to_take)
+            self.r_vel = dist_yaw / self.time_to_take
+            self.find_psi_from_desired_vel_cartesian(self.x_vel, self.y_vel, self.r_vel)
+            self.time_to_take -= (1 / FRAMERATE)
+        if control_mode == 'slowdown':
+            self.accelerate(0, 0)
+            self.r_vel = 0
+            self.time_to_take = 0
+            self.find_psi_from_desired_vel_cartesian(self.x_vel, self.y_vel, self.r_vel)
+            if math.fabs(self.x_vel) <= SPEED_PRECISION and math.fabs(self.y_vel) <= SPEED_PRECISION:
+                control_mode = 'none'
+                self.x_vel = 0
+                self.y_vel = 0
+            dist_x = self.dest_x - self.xpos_actual
+            dist_y = self.dest_y - self.ypos_actual
+            if math.fabs(dist_x) > DIST_PRECISION or math.fabs(dist_y) > DIST_PRECISION:
+                control_mode = 'point_execution'
+                self.time_to_take = 1
+
+
 
     def find_vel_from_psi(self):
         rframe_x_vel = WHEEL_RADIUS * (self.psi_1 - self.psi_2 - self.psi_3 + self.psi_4) / 4
@@ -156,25 +195,20 @@ class Car():
         self.y_vel = 0
         self.r_vel = 0
 
-    def accelerate(self, desired_speed, desired_direction):
-        if desired_speed > 15:
-            print('Warning: Desired speed is greater than 15 ft/s')
-            return
-        desired_x_vel = desired_speed * math.cos(math.radians(desired_direction))
-        desired_y_vel = desired_speed * math.sin(math.radians(desired_direction))
+    def accelerate(self, desired_x_vel, desired_y_vel):
+        # if desired_speed > MAX_SPEED:
+        #     print('Warning: Desired speed is greater than 15 ft/s')
+        #     return
         x_vel_delta = desired_x_vel - self.x_vel
         y_vel_delta = desired_y_vel - self.y_vel
         speed_delta = math.sqrt(x_vel_delta * x_vel_delta + y_vel_delta * y_vel_delta)
+        if speed_delta > MAX_ACCELERATION:
+            speed_delta = MAX_ACCELERATION
         accel_direction = math.atan2(y_vel_delta, x_vel_delta)
-        yaw_rad = math.radians(self.yaw)
-        accel_dir_rad = math.radians(accel_direction)
-        rvel_rad = math.radians(self.r_vel)
-        A_cx = speed_delta * math.cos(accel_dir_rad - (yaw_rad + rvel_rad * (1 / FRAMERATE)))
-        A_cy = speed_delta * math.sin(accel_dir_rad - (yaw_rad + rvel_rad * (1 / FRAMERATE)))
-        self.psi_1 += (1 / WHEEL_RADIUS) * (A_cy + A_cx)
-        self.psi_2 += (1 / WHEEL_RADIUS) * (A_cy - A_cx)
-        self.psi_3 += (1 / WHEEL_RADIUS) * (A_cy - A_cx)
-        self.psi_4 += (1 / WHEEL_RADIUS) * (A_cy + A_cx)
+        x_accel = speed_delta * math.cos(accel_direction)
+        y_accel = speed_delta * math.sin(accel_direction)
+        self.x_vel += x_accel
+        self.y_vel += y_accel
         return
 
     def direction_to_point(self, point_x, point_y):
@@ -184,7 +218,12 @@ class Car():
         return direction
 
     def pid_control(self):
-        pass
+        distance_x = self.dest_x - self.xpos_actual
+        distance_y = self.dest_y - self.ypos_actual
+        distance_yaw = self.dest_orientation - self.yaw
+        x_vel = distance_x / self.time_to_take
+        y_vel = distance_y / self.time_to_take
+        r_vel = distance_yaw / self.time_to_take
 
 class RobotMenu(QWidget):
     
@@ -275,7 +314,34 @@ class RobotMenu(QWidget):
         self.set_polar_vel_button.move(150, 340)
         self.set_polar_vel_button.clicked[bool].connect(self.setPolarVel)
 
-        # Specify Point to Travel To
+        # Specify Point to Move to
+        self.dest_point_x_lbl = QLabel(self)
+        self.dest_point_x_lbl.setText('Desired X Coord (ft): ')
+        self.dest_point_x_field = QLineEdit(self)
+        self.dest_point_x_lbl.move(10, 380)
+        self.dest_point_x_field.move(160, 376)
+
+        self.dest_point_y_lbl = QLabel(self)
+        self.dest_point_y_lbl.setText('Desired Y Coord (ft): ')
+        self.dest_point_y_field = QLineEdit(self)
+        self.dest_point_y_lbl.move(10, 400)
+        self.dest_point_y_field.move(160, 396)
+
+        self.dest_orientation_lbl = QLabel(self)
+        self.dest_orientation_lbl.setText('Desired End Orientation (deg): ')
+        self.dest_orientation_field = QLineEdit(self)
+        self.dest_orientation_lbl.move(10, 420)
+        self.dest_orientation_field.move(160, 416)
+
+        self.time_to_take_lbl = QLabel(self)
+        self.time_to_take_lbl.setText('Desired Amount of Time (s): ')
+        self.time_to_take_field = QLineEdit(self)
+        self.time_to_take_lbl.move(10, 440)
+        self.time_to_take_field.move(160, 436)
+        
+        self.set_dest_button = QPushButton('Set Vel', self)
+        self.set_dest_button.move(160, 460)
+        self.set_dest_button.clicked[bool].connect(self.setDest)
 
         # Specify Path to Travel On
 
@@ -311,7 +377,33 @@ class RobotMenu(QWidget):
         control_mode = 'manual_vel'
 
     def setDest(self, time):
-        pass
+        global my_car, control_mode
+        dest_x = str_to_float(self.dest_point_x_field.text())
+        dest_y = str_to_float(self.dest_point_y_field.text())
+        dest_orientation = str_to_float(self.dest_orientation_field.text())
+        dest_orientation %= 360
+        time_to_take = str_to_float(self.time_to_take_field.text())
+        # check for speed > 15 ft/s
+        dist_x = dest_x - my_car.xpos_actual
+        dist_y = dest_y - my_car.ypos_actual
+        distance = math.sqrt(dist_x * dist_x + dist_y * dist_y)
+        if (distance / time_to_take) > MAX_SPEED:
+            # alert('Desired execution requires a speed greater than 15 ft/s')
+            self.alert_msg = QMessageBox()
+            self.alert_msg.setIcon(QMessageBox.Information)
+            self.alert_msg.setWindowTitle("Simulation Error")
+            self.alert_msg.setText('An error has occurred')
+            self.alert_msg.setInformativeText('Desired execution requires a speed greater than %f ft/s' % MAX_SPEED)
+            self.alert_msg.setStandardButtons(QMessageBox.Ok)
+            # self.alert_msg.buttonClicked.connect(msgbtn)
+            retval = self.alert_msg.exec_()
+            return
+        my_car.dest_x = dest_x
+        my_car.dest_y = dest_y
+        my_car.dest_orientation = dest_orientation
+        my_car.time_to_take = time_to_take
+        control_mode = 'point_execution'
+        return
 
     def setPath(self, time):
         pass
@@ -339,7 +431,7 @@ def init():
         robot_init(False)
 
 def reset():
-    global my_car
+    global my_car, control_mode
     my_car.set_position(SCREEN_WIDTH/2, SCREEN_HEIGHT/2)
     my_car.xpos_actual = 0
     my_car.ypos_actual = 0
@@ -351,6 +443,7 @@ def reset():
     my_car.x_vel = 0
     my_car.y_vel = 0
     my_car.r_vel = 0
+    control_mode = 'none'
 
 def draw(canvas):
     global robot_pos, ball_vel, l_score, r_score, my_car
