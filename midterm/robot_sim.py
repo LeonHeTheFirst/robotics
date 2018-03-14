@@ -370,11 +370,11 @@ class RobotMenu(QWidget):
         self.circle_center_dir_lbl.move(10, 520)
         self.circle_center_dir_field.move(160, 516)
 
-        self.circle_dest_orientation_lbl = QLabel(self)
-        self.circle_dest_orientation_lbl.setText('Desired End Orientation (deg): ')
-        self.circle_dest_orientation_field = QLineEdit(self)
-        self.circle_dest_orientation_lbl.move(10, 540)
-        self.circle_dest_orientation_field.move(160, 536)
+        # self.circle_dest_orientation_lbl = QLabel(self)
+        # self.circle_dest_orientation_lbl.setText('Desired End Orientation (deg): ')
+        # self.circle_dest_orientation_field = QLineEdit(self)
+        # self.circle_dest_orientation_lbl.move(10, 540)
+        # self.circle_dest_orientation_field.move(160, 536)
 
         self.circle_time_lbl = QLabel(self)
         self.circle_time_lbl.setText('Desired Time per Revolution (s): ')
@@ -463,7 +463,13 @@ class RobotMenu(QWidget):
         pass
 
     def setCircle(self):
-        # circle_center_x = 
+        global my_car
+        circle_radius = str_to_float(self.circle_radius_lbl.text())
+        circle_center_dir = str_to_float(self.circle_center_dir_lbl.text())
+        # circle_dest_orientation = str_to_float(self.circle_dest_orientation_lbl.text())
+        circle_time = str_to_float(self.circle_time_lbl.text())
+        circle_center_x = my_car.xpos_actual + circle_radius * math.cos(circle_center_dir)
+        circle_center_y = my_car.ypos_actual + circle_radius * math.sin(circle_center_dir)
         pass
 
     def setFigure8(self):
