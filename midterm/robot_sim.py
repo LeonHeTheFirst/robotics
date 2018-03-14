@@ -31,14 +31,15 @@ DIST_PRECISION = 0.01 # ft/s/s
 YAW_PRECISION = 0.01 # ft/s/s
 SPEED_PRECISION = 0.0001 # ft/s/s
 SCREEN_WIDTH = 30 * PIX_PER_FOOT
-SCREEN_HEIGHT = MAX_SPEED * PIX_PER_FOOT
+SCREEN_HEIGHT = 15 * PIX_PER_FOOT
 SCREEN_BUFFER = 2 * PIX_PER_FOOT
+ACTUAL_PATH_LIMIT = 36000 # limit on history kept for path travelled
 robot_pos = [0, 0]
 ball_vel = [0, 0]
 l_score = 0
 r_score = 0
 control_mode = 'none'
-
+screen_center = (0, 0)
 
 def str_to_float(string):
     if len(string) == 0:
@@ -95,6 +96,10 @@ class Car():
         self.ypos = ypos
 
     def reset_screen_pos(self):
+        global screen_center
+        screen_center = (self.xpos_actual, self.ypos_actual)
+        # screen_center[0] = self.xpos_actual
+        # screen_center[1] = self.ypos_actual
         self.set_position(SCREEN_WIDTH/2, SCREEN_HEIGHT/2)
 
     def update(self):
@@ -108,6 +113,8 @@ class Car():
         self.xpos_actual += self.x_vel * (1 / FRAMERATE)
         self.ypos_actual += self.y_vel * (1 / FRAMERATE)
         self.actual_path.append((self.xpos_actual, self.ypos_actual))
+        if len(self.actual_path) > ACTUAL_PATH_LIMIT:
+            del self.actual_path[0]
         self.yaw += self.r_vel * (1 / FRAMERATE)
         if self.yaw > 360 or self.yaw < 0:
             self.yaw %= 360
@@ -475,10 +482,17 @@ def reset():
     my_car.x_vel = 0
     my_car.y_vel = 0
     my_car.r_vel = 0
+    my_car.actual_path = []
     control_mode = 'none'
 
 def draw_point(canvas, color, pos):
     canvas.fill(color, (pos, (1, 1)))
+
+def coord_global_to_frame(point):
+    global screen_center
+    screen_x = SCREEN_WIDTH/2 + PIX_PER_FOOT * (point[0] - screen_center[0])
+    screen_y = SCREEN_HEIGHT/2 - PIX_PER_FOOT * (point[1] - screen_center[1])
+    return (screen_x, screen_y)
 
 def draw(canvas):
     global robot_pos, ball_vel, l_score, r_score, my_car
@@ -495,6 +509,9 @@ def draw(canvas):
     # Front indicator
     pygame.draw.circle(canvas, RED, my_car.front_point(), int(0.1 * PIX_PER_FOOT))
 
+    for point in my_car.actual_path:
+        actual_path_point = coord_global_to_frame(point)
+        draw_point(canvas, GREEN, actual_path_point)
     my_car.update()
 
     myfont1 = pygame.font.SysFont(None, 30)
