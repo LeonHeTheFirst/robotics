@@ -107,7 +107,7 @@ class Car():
             self.reset_screen_pos()
         self.xpos_actual += self.x_vel * (1 / FRAMERATE)
         self.ypos_actual += self.y_vel * (1 / FRAMERATE)
-        self.actual_path.append((self.xpos_actual self.ypos_actual))
+        self.actual_path.append((self.xpos_actual, self.ypos_actual))
         self.yaw += self.r_vel * (1 / FRAMERATE)
         if self.yaw > 360 or self.yaw < 0:
             self.yaw %= 360
@@ -346,9 +346,38 @@ class RobotMenu(QWidget):
         self.set_dest_button.move(160, 460)
         self.set_dest_button.clicked[bool].connect(self.setDest)
 
+        # Specify Circle to Move in
+        self.circle_radius_lbl = QLabel(self)
+        self.circle_radius_lbl.setText('Desired Radius (ft): ')
+        self.circle_radius_field = QLineEdit(self)
+        self.circle_radius_lbl.move(10, 500)
+        self.circle_radius_field.move(160, 496)
+
+        self.circle_center_dir_lbl = QLabel(self)
+        self.circle_center_dir_lbl.setText('Direction of circle center (deg): ')
+        self.circle_center_dir_field = QLineEdit(self)
+        self.circle_center_dir_lbl.move(10, 520)
+        self.circle_center_dir_field.move(160, 516)
+
+        self.circle_dest_orientation_lbl = QLabel(self)
+        self.circle_dest_orientation_lbl.setText('Desired End Orientation (deg): ')
+        self.circle_dest_orientation_field = QLineEdit(self)
+        self.circle_dest_orientation_lbl.move(10, 540)
+        self.circle_dest_orientation_field.move(160, 536)
+
+        self.circle_time_lbl = QLabel(self)
+        self.circle_time_lbl.setText('Desired Time per Revolution (s): ')
+        self.circle_time_field = QLineEdit(self)
+        self.circle_time_lbl.move(10, 560)
+        self.circle_time_field.move(160, 556)
+        
+        self.set_circle_button = QPushButton('Set Vel', self)
+        self.set_circle_button.move(160, 580)
+        self.set_circle_button.clicked[bool].connect(self.setCircle)
+
         # Specify Path to Travel On
 
-        self.setGeometry(200, 200, 500, 500)
+        self.setGeometry(200, 200, 500, 800)
         self.setWindowTitle('Robot Menu')
         self.show()
 
