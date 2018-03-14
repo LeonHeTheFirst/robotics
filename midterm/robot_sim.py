@@ -28,7 +28,7 @@ WHEEL_RADIUS = 1
 MAX_SPEED = 15 # ft/s
 MAX_ACCELERATION = 1 # ft/s/s
 DIST_PRECISION = 0.01 # ft/s/s
-YAW_PRECISION = 0.01 # ft/s/s
+YAW_PRECISION = 0.01 # deg
 SPEED_PRECISION = 0.0001 # ft/s/s
 SCREEN_WIDTH = 30 * PIX_PER_FOOT
 SCREEN_HEIGHT = 15 * PIX_PER_FOOT
@@ -126,8 +126,11 @@ class Car():
             dist_x = self.dest_x - self.xpos_actual
             dist_y = self.dest_y - self.ypos_actual
             dist_yaw = self.dest_orientation - self.yaw
-            if math.fabs(dist_x) <= DIST_PRECISION and math.fabs(dist_y) <= DIST_PRECISION and math.fabs(dist_yaw) <= YAW_PRECISION:
+            dist_yaw_abs = min(math.fabs(dist_yaw), math.fabs(dist_yaw % 360))
+            # print(math.fabs(dist_yaw), math.fabs(dist_yaw % 360), dist_yaw_abs)
+            if math.fabs(dist_x) <= DIST_PRECISION and math.fabs(dist_y) <= DIST_PRECISION and dist_yaw_abs <= YAW_PRECISION:
                 control_mode = 'slowdown'
+                print('slowing down')
                 # self.x_vel = 0
                 # self.y_vel = 0
                 self.accelerate(0, 0)
@@ -152,6 +155,7 @@ class Car():
                 self.y_vel = 0
             dist_x = self.dest_x - self.xpos_actual
             dist_y = self.dest_y - self.ypos_actual
+            dist_yaw = self.dest_orientation - self.yaw
             if math.fabs(dist_x) > DIST_PRECISION or math.fabs(dist_y) > DIST_PRECISION:
                 control_mode = 'point_execution'
                 self.time_to_take = 1
@@ -507,7 +511,7 @@ def coord_global_to_frame(point):
     return (screen_x, screen_y)
 
 def draw(canvas):
-    global robot_pos, ball_vel, l_score, r_score, my_car
+    global robot_pos, ball_vel, l_score, r_score, my_car, control_mode
 
     canvas.fill(BLACK)
 
@@ -537,6 +541,7 @@ def draw(canvas):
     label8 = myfont1.render("Psi_2 (rad/s): " + str(round(my_car.psi_2, 2)), 1, RED)
     label9 = myfont1.render("Psi_3 (rad/s): " + str(round(my_car.psi_3, 2)), 1, RED)
     label10 = myfont1.render("Psi_4 (rad/s): " + str(round(my_car.psi_4, 2)), 1, RED)
+    label11 = myfont1.render("Control mode: " + control_mode, 1, RED)
     canvas.blit(label1, (50, 20))
     canvas.blit(label2, (50, 40))
     canvas.blit(label3, (50, 60))
@@ -547,6 +552,7 @@ def draw(canvas):
     canvas.blit(label8, (50, 160))
     canvas.blit(label9, (50, 180))
     canvas.blit(label10, (50, 200))
+    canvas.blit(label11, (50, 220))
 
 
 def keydown(event):
