@@ -144,6 +144,8 @@ class Car():
             self.r_vel = dist_yaw / self.time_to_take
             self.find_psi_from_desired_vel_cartesian(self.x_vel, self.y_vel, self.r_vel)
             self.time_to_take -= (1 / FRAMERATE)
+        if control_mode == 'circle_execution':
+            return
         if control_mode == 'slowdown':
             self.accelerate(0, 0)
             self.r_vel = 0
@@ -473,6 +475,7 @@ class RobotMenu(QWidget):
         circle_center_y = my_car.ypos_actual + circle_radius * math.sin(circle_center_dir)
         my_car.desired_circle_center = (circle_center_x, circle_center_y)
         my_car.desired_circle_radius = circle_radius
+        my_car.time_to_take = circle_time
         control_mode = 'circle_execution'
         pass
 
