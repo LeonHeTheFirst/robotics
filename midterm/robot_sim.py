@@ -460,19 +460,25 @@ class RobotMenu(QWidget):
         return
 
     def setPath(self, time):
+        global my_car, control_mode
         pass
 
     def setCircle(self):
-        global my_car
+        global my_car, control_mode
         circle_radius = str_to_float(self.circle_radius_lbl.text())
         circle_center_dir = str_to_float(self.circle_center_dir_lbl.text())
         # circle_dest_orientation = str_to_float(self.circle_dest_orientation_lbl.text())
         circle_time = str_to_float(self.circle_time_lbl.text())
         circle_center_x = my_car.xpos_actual + circle_radius * math.cos(circle_center_dir)
         circle_center_y = my_car.ypos_actual + circle_radius * math.sin(circle_center_dir)
+        my_car.desired_circle_center = (circle_center_x, circle_center_y)
+        my_car.desired_circle_radius = circle_radius
+        control_mode = 'circle_execution'
         pass
 
     def setFigure8(self):
+        global my_car, control_mode
+        control_mode = 'figure8_execution'
         pass
 
 
