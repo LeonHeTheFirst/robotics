@@ -422,6 +422,17 @@ class RobotMenu(QWidget):
         dest_orientation = str_to_float(self.dest_orientation_field.text())
         dest_orientation %= 360
         time_to_take = str_to_float(self.time_to_take_field.text())
+        if time_to_take <= 0:
+            self.alert_msg = QMessageBox()
+            self.alert_msg.setIcon(QMessageBox.Information)
+            self.alert_msg.setWindowTitle("Simulation Error")
+            self.alert_msg.setText('An error has occurred')
+            self.alert_msg.setInformativeText('Zero or negative time specified: %fs' % time_to_take)
+            self.alert_msg.setStandardButtons(QMessageBox.Ok)
+            # self.alert_msg.buttonClicked.connect(msgbtn)
+            retval = self.alert_msg.exec_()
+            return
+
         # check for speed > 15 ft/s
         dist_x = dest_x - my_car.xpos_actual
         dist_y = dest_y - my_car.ypos_actual
@@ -448,6 +459,7 @@ class RobotMenu(QWidget):
         pass
 
     def setCircle(self):
+        # circle_center_x = 
         pass
 
     def setFigure8(self):
