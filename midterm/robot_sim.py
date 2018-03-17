@@ -13,8 +13,9 @@ fps = pygame.time.Clock()
 
 WHITE = (255, 255, 255)
 ORANGE = (255,140,0)
-GREEN = (0, 255, 0)
 RED = (255, 0, 0)
+GREEN = (0, 255, 0)
+BLUE = (0, 0, 255)
 YELLOW = (255, 255, 0)
 BLACK = (0, 0, 0)
 
@@ -24,12 +25,12 @@ CAR_LENGTH = 4
 CAR_WIDTH = 2
 CAR_HALF_LENGTH = 2
 CAR_HALF_WIDTH = 1
-WHEEL_RADIUS = 1
+WHEEL_RADIUS = 0.5
 MAX_SPEED = 15 # ft/s
 MAX_ACCELERATION = 1 # ft/s/s
-DIST_PRECISION = 0.01 # ft/s/s
-YAW_PRECISION = 0.01 # deg
-SPEED_PRECISION = 0.0001 # ft/s/s
+DIST_PRECISION = 0.01 # ft
+YAW_PRECISION = 0.1 # deg
+SPEED_PRECISION = 0.0001 # ft/s
 SCREEN_WIDTH = 30 * PIX_PER_FOOT
 SCREEN_HEIGHT = 15 * PIX_PER_FOOT
 SCREEN_BUFFER = 2 * PIX_PER_FOOT
@@ -145,6 +146,34 @@ class Car():
             self.find_psi_from_desired_vel_cartesian(self.x_vel, self.y_vel, self.r_vel)
             self.time_to_take -= (1 / FRAMERATE)
         if control_mode == 'circle_execution':
+            if not self.direction_set:
+                dist_yaw = self.circle_center_dir - self.yaw
+                dist_yaw_abs = min(math.fabs(dist_yaw), math.fabs(dist_yaw % 360))
+                if dist_yaw_abs <= YAW_PRECISION:
+                    self.direction_set = True
+                    return
+                dist_yaw %= 360
+                if dist_yaw > 180:
+                    self.psi_1 = 1
+                    self.psi_2 = -1
+                    self.psi_3 = 1
+                    self.psi_4 = -1
+                else:
+                    self.psi_1 = -1
+                    self.psi_2 = 1
+                    self.psi_3 = -1
+                    self.psi_4 = 1
+                self.find_vel_from_psi()
+                return
+            angular_vel = 2 * math.pi / self.time_to_take
+            linear_vel = angular_vel * self.desired_circle_radius
+            inverse_rad = 1 / WHEEL_RADIUS
+            size_const = (CAR_HALF_LENGTH + CAR_HALF_WIDTH)
+            self.psi_1 = inverse_rad * (linear_vel + size_const * angular_vel)
+            self.psi_2 = inverse_rad * (linear_vel - size_const * angular_vel)
+            self.psi_3 = inverse_rad * (linear_vel + size_const * angular_vel)
+            self.psi_4 = inverse_rad * (linear_vel - size_const * angular_vel)
+            self.find_vel_from_psi()
             return
         if control_mode == 'slowdown':
             self.accelerate(0, 0)
@@ -372,23 +401,17 @@ class RobotMenu(QWidget):
         self.circle_center_dir_lbl.move(10, 520)
         self.circle_center_dir_field.move(160, 516)
 
-        # self.circle_dest_orientation_lbl = QLabel(self)
-        # self.circle_dest_orientation_lbl.setText('Desired End Orientation (deg): ')
-        # self.circle_dest_orientation_field = QLineEdit(self)
-        # self.circle_dest_orientation_lbl.move(10, 540)
-        # self.circle_dest_orientation_field.move(160, 536)
-
         self.circle_time_lbl = QLabel(self)
-        self.circle_time_lbl.setText('Desired Time per Revolution (s): ')
+        self.circle_time_lbl.setText('Time per Revolution (s): ')
         self.circle_time_field = QLineEdit(self)
-        self.circle_time_lbl.move(10, 560)
-        self.circle_time_field.move(160, 556)
+        self.circle_time_lbl.move(10, 540)
+        self.circle_time_field.move(160, 536)
         
         self.set_circle_button = QPushButton('Set Vel', self)
-        self.set_circle_button.move(160, 580)
+        self.set_circle_button.move(160, 560)
         self.set_circle_button.clicked[bool].connect(self.setCircle)
 
-        # Specify Path to Travel On
+        # Specify Rectangle to Travel On
 
         self.setGeometry(200, 200, 500, 800)
         self.setWindowTitle('Robot Menu')
@@ -461,11 +484,47 @@ class RobotMenu(QWidget):
         control_mode = 'point_execution'
         return
 
-    def setPath(self, time):
+    def setCircle(self):
         global my_car, control_mode
+        circle_radius = str_to_float(self.circle_radius_field.text())
+        circle_center_dir = str_to_float(self.circle_center_dir_field.text())
+        circle_center_dir %= 360
+        # circle_dest_orientation = str_to_float(self.circle_dest_orientation_field.text())
+        circle_time = str_to_float(self.circle_time_field.text())
+        if circle_time <= 0:
+            self.alert_msg = QMessageBox()
+            self.alert_msg.setIcon(QMessageBox.Information)
+            self.alert_msg.setWindowTitle("Simulation Error")
+            self.alert_msg.setText('An error has occurred')
+            self.alert_msg.setInformativeText('Zero or negative time specified: %fs' % time_to_take)
+            self.alert_msg.setStandardButtons(QMessageBox.Ok)
+            retval = self.alert_msg.exec_()
+            return
+        angular_vel = 2 * math.pi / circle_time
+        linear_vel = angular_vel * circle_radius
+        if linear_vel > MAX_SPEED:
+            # alert('Desired execution requires a speed greater than 15 ft/s')
+            self.alert_msg = QMessageBox()
+            self.alert_msg.setIcon(QMessageBox.Information)
+            self.alert_msg.setWindowTitle("Simulation Error")
+            self.alert_msg.setText('An error has occurred')
+            self.alert_msg.setInformativeText('Desired execution requires a speed greater than %f ft/s' % MAX_SPEED)
+            self.alert_msg.setStandardButtons(QMessageBox.Ok)
+            # self.alert_msg.buttonClicked.connect(msgbtn)
+            retval = self.alert_msg.exec_()
+            return
+
+        # circle_center_x = my_car.xpos_actual + circle_radius * math.cos(circle_center_dir)
+        # circle_center_y = my_car.ypos_actual + circle_radius * math.sin(circle_center_dir)
+        my_car.circle_center_dir = circle_center_dir
+        # my_car.desired_circle_center = (circle_center_x, circle_center_y)
+        my_car.desired_circle_radius = circle_radius
+        my_car.time_to_take = circle_time
+        my_car.direction_set = False
+        control_mode = 'circle_execution'
         pass
 
-    def setCircle(self):
+    def setRectangle(self):
         global my_car, control_mode
         circle_radius = str_to_float(self.circle_radius_lbl.text())
         circle_center_dir = str_to_float(self.circle_center_dir_lbl.text())
@@ -476,7 +535,7 @@ class RobotMenu(QWidget):
         my_car.desired_circle_center = (circle_center_x, circle_center_y)
         my_car.desired_circle_radius = circle_radius
         my_car.time_to_take = circle_time
-        control_mode = 'circle_execution'
+        control_mode = 'rectangle_execution'
         pass
 
     def setFigure8(self):
@@ -501,7 +560,8 @@ def init():
         robot_init(False)
 
 def reset():
-    global my_car, control_mode
+    global my_car, control_mode, screen_center
+    screen_center = (0, 0)
     my_car.set_position(SCREEN_WIDTH/2, SCREEN_HEIGHT/2)
     my_car.xpos_actual = 0
     my_car.ypos_actual = 0
@@ -517,7 +577,7 @@ def reset():
     control_mode = 'none'
 
 def draw_point(canvas, color, pos):
-    canvas.fill(color, (pos, (1, 1)))
+    canvas.fill(color, (pos, (2, 2)))
 
 def coord_global_to_frame(point):
     global screen_center
@@ -535,14 +595,15 @@ def draw(canvas):
     for column in range(0, SCREEN_WIDTH, margin):
         for row in range(0, SCREEN_HEIGHT, margin):
             pygame.draw.rect(canvas, WHITE, [column,row,SCREEN_WIDTH,SCREEN_HEIGHT], 1)
-    # Draw the car
-    pygame.draw.polygon(canvas, GREEN, my_car.corners())
-    # Front indicator
-    pygame.draw.circle(canvas, RED, my_car.front_point(), int(0.1 * PIX_PER_FOOT))
 
     for point in my_car.actual_path:
         actual_path_point = coord_global_to_frame(point)
         draw_point(canvas, GREEN, actual_path_point)
+
+    # Draw the car
+    pygame.draw.polygon(canvas, GREEN, my_car.corners())
+    # Front indicator
+    pygame.draw.circle(canvas, RED, my_car.front_point(), int(0.1 * PIX_PER_FOOT))
     my_car.update()
 
     myfont1 = pygame.font.SysFont(None, 30)
