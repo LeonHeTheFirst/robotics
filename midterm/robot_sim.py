@@ -586,6 +586,15 @@ class RobotMenu(QWidget):
         side2 = str_to_float(self.rectangle_side2_field.text())
         inclination = str_to_float(self.rectangle_inclination_field.text())
         rect_time = str_to_float(self.rectangle_time_field.text())
+        if side1 <= 0 or side2 <= 0:
+            self.alert_msg = QMessageBox()
+            self.alert_msg.setIcon(QMessageBox.Information)
+            self.alert_msg.setWindowTitle("Simulation Error")
+            self.alert_msg.setText('An error has occurred')
+            self.alert_msg.setInformativeText('Zero or negative side length specified: %f, %f' % (side1, side2))
+            self.alert_msg.setStandardButtons(QMessageBox.Ok)
+            retval = self.alert_msg.exec_()
+            return
         if rect_time <= 0:
             self.alert_msg = QMessageBox()
             self.alert_msg.setIcon(QMessageBox.Information)
@@ -609,12 +618,15 @@ class RobotMenu(QWidget):
         angle_rad = math.radians(inclination)
         diag_len = math.sqrt(side1 ** 2 + side2 ** 2)
         phi = math.acos(side1 / diag_len) + angle_rad
-        iphi = math.pi / 2 - phi
+        iphi = phi - math.pi / 2
+        print(phi)
+        print(iphi)
         point0 = (my_car.xpos_actual, my_car.ypos_actual)
         point1 = (my_car.xpos_actual + side1 * math.cos(phi), my_car.ypos_actual + side1 * math.sin(phi))
         point2 = (my_car.xpos_actual + diag_len * math.cos(angle_rad), my_car.ypos_actual + diag_len * math.sin(angle_rad))
         point3 = (my_car.xpos_actual + side2 * math.cos(iphi), my_car.ypos_actual + side2 * math.sin(iphi))
         my_car.rect_points = [point0, point1, point2, point3]
+        print(my_car.rect_points)
         my_car.time_to_take = rect_time
         control_mode = 'rectangle_execution'
         pass
