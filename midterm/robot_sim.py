@@ -27,7 +27,7 @@ CAR_HALF_LENGTH = 2
 CAR_HALF_WIDTH = 1
 WHEEL_RADIUS = 0.5
 MAX_SPEED = 15 # ft/s
-MAX_ACCELERATION = 1 # ft/s/s
+MAX_ACCELERATION = 30 # ft/s/s
 DIST_PRECISION = 0.01 # ft
 YAW_PRECISION = 0.1 # deg
 SPEED_PRECISION = 0.0001 # ft/s
@@ -128,7 +128,18 @@ class Car():
             dist_y = self.dest_y - self.ypos_actual
             dist_yaw = self.dest_orientation - self.yaw
             dist_yaw_abs = min(math.fabs(dist_yaw), math.fabs(dist_yaw % 360))
-            # print(math.fabs(dist_yaw), math.fabs(dist_yaw % 360), dist_yaw_abs)
+            dist = math.sqrt(dist_x * dist_x + dist_y * dist_y)
+            speed = math.sqrt(self.x_vel * self.x_vel + self.y_vel * self.y_vel)
+            if speed * speed / (2 * MAX_ACCELERATION) > dist:
+                control_mode = 'slowdown'
+                print('slowing down')
+                # self.x_vel = 0
+                # self.y_vel = 0
+                self.accelerate(0, 0)
+                self.r_vel = 0
+                self.time_to_take = 0
+                self.find_psi_from_desired_vel_cartesian(self.x_vel, self.y_vel, self.r_vel)
+                return
             if math.fabs(dist_x) <= DIST_PRECISION and math.fabs(dist_y) <= DIST_PRECISION and dist_yaw_abs <= YAW_PRECISION:
                 control_mode = 'slowdown'
                 print('slowing down')
@@ -142,9 +153,15 @@ class Car():
             # self.x_vel = dist_x / self.time_to_take
             # self.y_vel = dist_y / self.time_to_take
             self.accelerate(dist_x / self.time_to_take, dist_y / self.time_to_take)
-            self.r_vel = dist_yaw / self.time_to_take
+            dist_yaw %= 360
+            if dist_yaw < 180:
+                self.r_vel = dist_yaw / self.time_to_take
+            else:
+                self.r_vel = -1 * dist_yaw / self.time_to_take
             self.find_psi_from_desired_vel_cartesian(self.x_vel, self.y_vel, self.r_vel)
             self.time_to_take -= (1 / FRAMERATE)
+            if self.time_to_take < 0:
+                self.time_to_take = 1
         if control_mode == 'circle_execution':
             if not self.direction_set:
                 dist_yaw = self.circle_center_dir - self.yaw
@@ -247,8 +264,9 @@ class Car():
         x_vel_delta = desired_x_vel - self.x_vel
         y_vel_delta = desired_y_vel - self.y_vel
         speed_delta = math.sqrt(x_vel_delta * x_vel_delta + y_vel_delta * y_vel_delta)
-        if speed_delta > MAX_ACCELERATION:
-            speed_delta = MAX_ACCELERATION
+        # if speed_delta > MAX_ACCELERATION:
+        #     speed_delta = MAX_ACCELERATION
+        speed_delta = min(speed_delta, MAX_ACCELERATION / FRAMERATE)
         accel_direction = math.atan2(y_vel_delta, x_vel_delta)
         x_accel = speed_delta * math.cos(accel_direction)
         y_accel = speed_delta * math.sin(accel_direction)
