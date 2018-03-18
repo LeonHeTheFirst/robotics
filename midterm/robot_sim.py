@@ -192,6 +192,26 @@ class Car():
             self.psi_4 = inverse_rad * (linear_vel - size_const * angular_vel)
             self.find_vel_from_psi()
             return
+        if control_mode == 'rectangle_execution':
+            if not self.direction_set:
+                dist_yaw = self.rect_start_dir - self.yaw
+                dist_yaw_abs = min(math.fabs(dist_yaw), math.fabs(dist_yaw % 360))
+                if dist_yaw_abs <= YAW_PRECISION:
+                    self.direction_set = True
+                    return
+                dist_yaw %= 360
+                if dist_yaw > 180:
+                    self.psi_1 = 1
+                    self.psi_2 = -1
+                    self.psi_3 = 1
+                    self.psi_4 = -1
+                else:
+                    self.psi_1 = -1
+                    self.psi_2 = 1
+                    self.psi_3 = -1
+                    self.psi_4 = 1
+                self.find_vel_from_psi()
+                return
         if control_mode == 'slowdown':
             self.accelerate(0, 0)
             self.r_vel = 0
@@ -429,6 +449,35 @@ class RobotMenu(QWidget):
         self.set_circle_button.move(160, 560)
         self.set_circle_button.clicked[bool].connect(self.setCircle)
 
+        # Specify Rectangle to Move in
+        self.rectangle_side1_lbl = QLabel(self)
+        self.rectangle_side1_lbl.setText('First Side Length (ft): ')
+        self.rectangle_side1_field = QLineEdit(self)
+        self.rectangle_side1_lbl.move(10, 600)
+        self.rectangle_side1_field.move(160, 596)
+
+        self.rectangle_side2_lbl = QLabel(self)
+        self.rectangle_side2_lbl.setText('Second Side Length (ft): ')
+        self.rectangle_side2_field = QLineEdit(self)
+        self.rectangle_side2_lbl.move(10, 620)
+        self.rectangle_side2_field.move(160, 616)
+
+        self.rectangle_angle_lbl = QLabel(self)
+        self.rectangle_angle_lbl.setText('Inclination (deg): ')
+        self.rectangle_angle_field = QLineEdit(self)
+        self.rectangle_angle_lbl.move(10, 640)
+        self.rectangle_angle_field.move(160, 636)
+
+        self.rectangle_time_lbl = QLabel(self)
+        self.rectangle_time_lbl.setText('Time per Revolution (s): ')
+        self.rectangle_time_field = QLineEdit(self)
+        self.rectangle_time_lbl.move(10, 660)
+        self.rectangle_time_field.move(160, 656)
+        
+        self.set_rectangle_button = QPushButton('Set Vel', self)
+        self.set_rectangle_button.move(160, 680)
+        self.set_rectangle_button.clicked[bool].connect(self.setRectangle)
+
         # Specify Rectangle to Travel On
 
         self.setGeometry(200, 200, 500, 800)
@@ -553,6 +602,7 @@ class RobotMenu(QWidget):
         my_car.desired_circle_center = (circle_center_x, circle_center_y)
         my_car.desired_circle_radius = circle_radius
         my_car.time_to_take = circle_time
+        my_car.rect_start_dir = angle
         control_mode = 'rectangle_execution'
         pass
 
