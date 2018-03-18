@@ -27,7 +27,7 @@ CAR_HALF_LENGTH = 2
 CAR_HALF_WIDTH = 1
 WHEEL_RADIUS = 0.5
 MAX_SPEED = 15 # ft/s
-MAX_ACCELERATION = 30 # ft/s/s
+MAX_ACCELERATION = 50 # ft/s/s
 DIST_PRECISION = 0.01 # ft
 YAW_PRECISION = 0.1 # deg
 SPEED_PRECISION = 0.0001 # ft/s
@@ -133,8 +133,6 @@ class Car():
             if speed * speed / (2 * MAX_ACCELERATION) > dist:
                 control_mode = 'slowdown'
                 print('slowing down')
-                # self.x_vel = 0
-                # self.y_vel = 0
                 self.accelerate(0, 0)
                 self.r_vel = 0
                 self.time_to_take = 0
@@ -143,15 +141,11 @@ class Car():
             if math.fabs(dist_x) <= DIST_PRECISION and math.fabs(dist_y) <= DIST_PRECISION and dist_yaw_abs <= YAW_PRECISION:
                 control_mode = 'slowdown'
                 print('slowing down')
-                # self.x_vel = 0
-                # self.y_vel = 0
                 self.accelerate(0, 0)
                 self.r_vel = 0
                 self.time_to_take = 0
                 self.find_psi_from_desired_vel_cartesian(self.x_vel, self.y_vel, self.r_vel)
                 return
-            # self.x_vel = dist_x / self.time_to_take
-            # self.y_vel = dist_y / self.time_to_take
             self.accelerate(dist_x / self.time_to_take, dist_y / self.time_to_take)
             dist_yaw %= 360
             if dist_yaw < 180:
@@ -193,7 +187,29 @@ class Car():
             self.find_vel_from_psi()
             return
         if control_mode == 'rectangle_execution':
-                return
+            dest = self.rect_points[(self.last_rect_point + 1) % 4]
+            dist_x = dest[0] - self.xpos_actual
+            dist_y = dest[1] - self.ypos_actual
+            dist = math.sqrt(dist_x * dist_x + dist_y * dist_y)
+            speed = math.sqrt(self.x_vel * self.x_vel + self.y_vel * self.y_vel)
+            self.r_vel = 0
+            if speed * speed / (2 * MAX_ACCELERATION) > dist:
+                # self.last_rect_point += 1
+                print('slowing down')
+                self.accelerate(0, 0)
+                self.find_psi_from_desired_vel_cartesian(self.x_vel, self.y_vel, self.r_vel)
+                if math.fabs(dist_x) <= 10 * DIST_PRECISION and math.fabs(dist_y) <= 10 * DIST_PRECISION:
+                    self.last_rect_point += 1
+                    return
+            else:
+                total_rect_dist = 2 * (self.rect_side1 + self.rect_side2)
+                avg_rect_vel = total_rect_dist / self.time_to_take
+                self.accelerate(avg_rect_vel * dist_x / dist, avg_rect_vel * dist_y / dist)
+                self.find_psi_from_desired_vel_cartesian(self.x_vel, self.y_vel, self.r_vel)
+            # self.time_to_take -= (1 / FRAMERATE)
+            # if self.time_to_take < 0:
+            #     self.time_to_take = 1
+            return
         if control_mode == 'slowdown':
             self.accelerate(0, 0)
             self.r_vel = 0
@@ -268,8 +284,6 @@ class Car():
         x_vel_delta = desired_x_vel - self.x_vel
         y_vel_delta = desired_y_vel - self.y_vel
         speed_delta = math.sqrt(x_vel_delta * x_vel_delta + y_vel_delta * y_vel_delta)
-        # if speed_delta > MAX_ACCELERATION:
-        #     speed_delta = MAX_ACCELERATION
         speed_delta = min(speed_delta, MAX_ACCELERATION / FRAMERATE)
         accel_direction = math.atan2(y_vel_delta, x_vel_delta)
         x_accel = speed_delta * math.cos(accel_direction)
@@ -628,6 +642,9 @@ class RobotMenu(QWidget):
         my_car.rect_points = [point0, point1, point2, point3]
         print(my_car.rect_points)
         my_car.time_to_take = rect_time
+        my_car.last_rect_point = 0
+        my_car.rect_side1 = side1
+        my_car.rect_side2 = side2
         control_mode = 'rectangle_execution'
         pass
 
