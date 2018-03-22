@@ -174,7 +174,7 @@ class Car():
             dist_x = self.end_point[0] - self.xpos_actual
             dist_y = self.end_point[1] - self.ypos_actual
             dist = math.sqrt(dist_x * dist_x + dist_y * dist_y)
-            if math.fabs(dist_x) <= DIST_PRECISION and math.fabs(dist_y) <= DIST_PRECISION:
+            if math.fabs(dist_x) <= 3 * DIST_PRECISION and math.fabs(dist_y) <= 3 * DIST_PRECISION:
                 print('got here')
                 if self.circle_idx == self.circle_count:
                     self.x_vel = 0
@@ -186,7 +186,7 @@ class Car():
                 self.at_start = True
                 if self.circle_idx == 1:
                     self.circle_idx += 1
-            if self.at_start and math.fabs(dist_x) > DIST_PRECISION and math.fabs(dist_y) > DIST_PRECISION:
+            if self.at_start and math.fabs(dist_x) > 3 * DIST_PRECISION and math.fabs(dist_y) > 3 * DIST_PRECISION:
                 if self.circle_idx == 0:
                     self.circle_idx += 1
                 print(self.circle_idx)
@@ -210,20 +210,23 @@ class Car():
                     self.psi_3 = -1
                     self.psi_4 = 1
                 self.find_vel_from_psi()
-                return
-            angular_vel = 2 * math.pi / self.time_to_take
-            linear_vel = angular_vel * self.desired_circle_radius
+                return  
+            linear_dist = 2 * math.pi * (self.desired_circle_radius + self.desired_circle2_radius)
+            linear_vel = linear_dist / self.time_to_take
+            angular_vel1 = linear_vel / self.desired_circle_radius
+            angular_vel2 = linear_vel / self.desired_circle2_radius
+            # linear_vel = angular_vel * self.desired_circle_radius
             inverse_rad = 1 / WHEEL_RADIUS
             size_const = (CAR_HALF_LENGTH + CAR_HALF_WIDTH)
-            self.psi_1 = inverse_rad * (linear_vel + size_const * angular_vel)
-            self.psi_2 = inverse_rad * (linear_vel - size_const * angular_vel)
-            self.psi_3 = inverse_rad * (linear_vel + size_const * angular_vel)
-            self.psi_4 = inverse_rad * (linear_vel - size_const * angular_vel)
+            self.psi_1 = inverse_rad * (linear_vel + size_const * angular_vel1)
+            self.psi_2 = inverse_rad * (linear_vel - size_const * angular_vel1)
+            self.psi_3 = inverse_rad * (linear_vel + size_const * angular_vel1)
+            self.psi_4 = inverse_rad * (linear_vel - size_const * angular_vel1)
             if self.circle_idx == 2:
-                self.psi_1 = inverse_rad * (linear_vel - size_const * angular_vel)
-                self.psi_2 = inverse_rad * (linear_vel + size_const * angular_vel)
-                self.psi_3 = inverse_rad * (linear_vel - size_const * angular_vel)
-                self.psi_4 = inverse_rad * (linear_vel + size_const * angular_vel)
+                self.psi_1 = inverse_rad * (linear_vel - size_const * angular_vel2)
+                self.psi_2 = inverse_rad * (linear_vel + size_const * angular_vel2)
+                self.psi_3 = inverse_rad * (linear_vel - size_const * angular_vel2)
+                self.psi_4 = inverse_rad * (linear_vel + size_const * angular_vel2)
             self.find_vel_from_psi()
             return
         if control_mode == 'rectangle_execution':
@@ -787,11 +790,6 @@ class RobotMenu(QWidget):
         control_mode = 'point_execution'
         pass
 
-    def setFigure8(self):
-        global my_car, control_mode
-        control_mode = 'figure8_execution'
-        pass
-
 
 my_car = Car(SCREEN_WIDTH/2, SCREEN_HEIGHT/2)
 
@@ -854,8 +852,8 @@ def draw(canvas):
     # Front indicator
     pygame.draw.circle(canvas, RED, my_car.front_point(), int(0.1 * PIX_PER_FOOT))
     # Draw intended path
-    if control_mode == 'rectangle_execution':
-        rect_points = [coord_global_to_frame(point) for point in my_car.rect_points]
+    if control_mode == 'point_execution':
+        rect_points = [coord_global_to_frame(point) for point in my_car.waypoints]
         pygame.draw.polygon(canvas, BLUE, rect_points, 1)
     my_car.update()
 
