@@ -28,7 +28,7 @@ CAR_HALF_WIDTH = 1
 WHEEL_RADIUS = 0.5
 MAX_SPEED = 15 # ft/s
 MAX_ACCELERATION = 50 # ft/s/s
-DIST_PRECISION = 0.01 # ft
+DIST_PRECISION = 0.02 # ft
 YAW_PRECISION = 0.1 # deg
 SPEED_PRECISION = 0.0001 # ft/s
 SCREEN_WIDTH = 30 * PIX_PER_FOOT
@@ -41,6 +41,11 @@ l_score = 0
 r_score = 0
 control_mode = 'none'
 screen_center = (0, 0)
+
+def point_dist(point0, point1):
+    x_diff = point1[0] - point0[0]
+    y_diff = point1[1] - point0[1]
+    return math.sqrt(x_diff ** 2 + y_diff ** 2)
 
 def str_to_float(string):
     if len(string) == 0:
@@ -124,39 +129,69 @@ class Car():
         if control_mode == 'manual_psi':
             self.find_vel_from_psi()
         if control_mode == 'point_execution':
-            dist_x = self.dest_x - self.xpos_actual
-            dist_y = self.dest_y - self.ypos_actual
+            dest = self.waypoints[self.curr_wp]
+            dist_x = dest[0] - self.xpos_actual
+            dist_y = dest[1] - self.ypos_actual
             dist_yaw = self.dest_orientation - self.yaw
             dist_yaw_abs = min(math.fabs(dist_yaw), math.fabs(dist_yaw % 360))
             dist = math.sqrt(dist_x * dist_x + dist_y * dist_y)
             speed = math.sqrt(self.x_vel * self.x_vel + self.y_vel * self.y_vel)
+            # stopping distance equation
             if speed * speed / (2 * MAX_ACCELERATION) > dist:
-                control_mode = 'slowdown'
-                print('slowing down')
                 self.accelerate(0, 0)
                 self.r_vel = 0
-                self.time_to_take = 0
                 self.find_psi_from_desired_vel_cartesian(self.x_vel, self.y_vel, self.r_vel)
+                if math.fabs(dist_x) <= DIST_PRECISION and math.fabs(dist_y) <= DIST_PRECISION:
+                    self.curr_wp += 1
+                    print(self.curr_wp)
+                    if self.curr_wp == len(self.waypoints):
+                        control_mode = 'slowdown'
+                        self.accelerate(0, 0)
+                        self.r_vel = 0
+                        self.find_psi_from_desired_vel_cartesian(self.x_vel, self.y_vel, self.r_vel)
                 return
-            if math.fabs(dist_x) <= DIST_PRECISION and math.fabs(dist_y) <= DIST_PRECISION and dist_yaw_abs <= YAW_PRECISION:
-                control_mode = 'slowdown'
-                print('slowing down')
-                self.accelerate(0, 0)
-                self.r_vel = 0
-                self.time_to_take = 0
-                self.find_psi_from_desired_vel_cartesian(self.x_vel, self.y_vel, self.r_vel)
-                return
-            self.accelerate(dist_x / self.time_to_take, dist_y / self.time_to_take)
-            dist_yaw %= 360
-            if dist_yaw < 180:
-                self.r_vel = dist_yaw / self.time_to_take
             else:
-                self.r_vel = -1 * dist_yaw / self.time_to_take
-            self.find_psi_from_desired_vel_cartesian(self.x_vel, self.y_vel, self.r_vel)
+                remaining_dist = 0
+                for i in range(self.curr_wp, len(self.waypoints)):
+                    if i == self.curr_wp:
+                        remaining_dist += point_dist((my_car.xpos_actual, my_car.ypos_actual), self.waypoints[i])
+                    else:
+                        remaining_dist += point_dist(self.waypoints[i - 1], self.waypoints[i])
+                avg_rect_vel = remaining_dist / self.time_to_take
+                self.accelerate(avg_rect_vel * dist_x / dist, avg_rect_vel * dist_y / dist)
+                dist_yaw %= 360
+                if dist_yaw < 180:
+                    self.r_vel = dist_yaw / self.time_to_take
+                else:
+                    self.r_vel = -1 * dist_yaw / self.time_to_take
+                self.find_psi_from_desired_vel_cartesian(self.x_vel, self.y_vel, self.r_vel)
+            # self.accelerate(dist_x / self.time_to_take, dist_y / self.time_to_take)
+            # self.find_psi_from_desired_vel_cartesian(self.x_vel, self.y_vel, self.r_vel)
             self.time_to_take -= (1 / FRAMERATE)
             if self.time_to_take < 0:
                 self.time_to_take = 1
         if control_mode == 'circle_execution':
+            dist_x = self.end_point[0] - self.xpos_actual
+            dist_y = self.end_point[1] - self.ypos_actual
+            dist = math.sqrt(dist_x * dist_x + dist_y * dist_y)
+            if math.fabs(dist_x) <= DIST_PRECISION and math.fabs(dist_y) <= DIST_PRECISION:
+                print('got here')
+                if self.circle_idx == self.circle_count:
+                    self.x_vel = 0
+                    self.y_vel = 0
+                    self.r_vel = 0
+                    self.find_psi_from_desired_vel_cartesian(self.x_vel, self.y_vel, self.r_vel)
+                    control_mode = 'none'
+                    return
+                self.at_start = True
+                if self.circle_idx == 1:
+                    self.circle_idx += 1
+            if self.at_start and math.fabs(dist_x) > DIST_PRECISION and math.fabs(dist_y) > DIST_PRECISION:
+                if self.circle_idx == 0:
+                    self.circle_idx += 1
+                print(self.circle_idx)
+                self.at_start = False
+                return
             if not self.direction_set:
                 dist_yaw = self.circle_center_dir - self.yaw
                 dist_yaw_abs = min(math.fabs(dist_yaw), math.fabs(dist_yaw % 360))
@@ -184,6 +219,11 @@ class Car():
             self.psi_2 = inverse_rad * (linear_vel - size_const * angular_vel)
             self.psi_3 = inverse_rad * (linear_vel + size_const * angular_vel)
             self.psi_4 = inverse_rad * (linear_vel - size_const * angular_vel)
+            if self.circle_idx == 2:
+                self.psi_1 = inverse_rad * (linear_vel - size_const * angular_vel)
+                self.psi_2 = inverse_rad * (linear_vel + size_const * angular_vel)
+                self.psi_3 = inverse_rad * (linear_vel - size_const * angular_vel)
+                self.psi_4 = inverse_rad * (linear_vel + size_const * angular_vel)
             self.find_vel_from_psi()
             return
         if control_mode == 'rectangle_execution':
@@ -194,11 +234,9 @@ class Car():
             speed = math.sqrt(self.x_vel * self.x_vel + self.y_vel * self.y_vel)
             self.r_vel = 0
             if speed * speed / (2 * MAX_ACCELERATION) > dist:
-                # self.last_rect_point += 1
-                print('slowing down')
                 self.accelerate(0, 0)
                 self.find_psi_from_desired_vel_cartesian(self.x_vel, self.y_vel, self.r_vel)
-                if math.fabs(dist_x) <= 10 * DIST_PRECISION and math.fabs(dist_y) <= 10 * DIST_PRECISION:
+                if math.fabs(dist_x) <= DIST_PRECISION and math.fabs(dist_y) <= DIST_PRECISION:
                     self.last_rect_point += 1
                     return
             else:
@@ -206,9 +244,6 @@ class Car():
                 avg_rect_vel = total_rect_dist / self.time_to_take
                 self.accelerate(avg_rect_vel * dist_x / dist, avg_rect_vel * dist_y / dist)
                 self.find_psi_from_desired_vel_cartesian(self.x_vel, self.y_vel, self.r_vel)
-            # self.time_to_take -= (1 / FRAMERATE)
-            # if self.time_to_take < 0:
-            #     self.time_to_take = 1
             return
         if control_mode == 'slowdown':
             self.accelerate(0, 0)
@@ -219,11 +254,13 @@ class Car():
                 control_mode = 'none'
                 self.x_vel = 0
                 self.y_vel = 0
-            dist_x = self.dest_x - self.xpos_actual
-            dist_y = self.dest_y - self.ypos_actual
+            dist_x = self.waypoints[-1][0] - self.xpos_actual
+            dist_y = self.waypoints[-1][1] - self.ypos_actual
             dist_yaw = self.dest_orientation - self.yaw
             if math.fabs(dist_x) > DIST_PRECISION or math.fabs(dist_y) > DIST_PRECISION:
+                print('going back')
                 control_mode = 'point_execution'
+                self.curr_wp -= 1
                 self.time_to_take = 1
 
 
@@ -276,9 +313,21 @@ class Car():
         self.r_vel = 0
 
     def accelerate(self, desired_x_vel, desired_y_vel):
+        global control_mode
         desired_speed = math.sqrt(desired_x_vel ** 2 + desired_y_vel ** 2)
         if desired_speed > MAX_SPEED:
-            print('Warning: Desired speed is greater than 15 ft/s')
+            self.stop()
+            control_mode = 'none'
+            # alert('Desired execution requires a speed greater than 15 ft/s')
+            self.alert_msg = QMessageBox()
+            self.alert_msg.setIcon(QMessageBox.Information)
+            self.alert_msg.setWindowTitle("Simulation Error")
+            self.alert_msg.setText('An error has occurred')
+            self.alert_msg.setInformativeText('Desired execution requires a speed greater than %f ft/s' % MAX_SPEED)
+            self.alert_msg.setStandardButtons(QMessageBox.Ok)
+            # self.alert_msg.buttonClicked.connect(msgbtn)
+            retval = self.alert_msg.exec_()
+            return
             desired_x_vel = desired_x_vel * MAX_SPEED / desired_speed
             desired_y_vel = desired_y_vel * MAX_SPEED / desired_speed
         x_vel_delta = desired_x_vel - self.x_vel
@@ -408,77 +457,118 @@ class RobotMenu(QWidget):
         self.dest_point_y_lbl.move(10, 400)
         self.dest_point_y_field.move(160, 396)
 
+        self.dest_point_x1_lbl = QLabel(self)
+        self.dest_point_x1_lbl.setText('Waypoint 1 X Coord (ft): ')
+        self.dest_point_x1_field = QLineEdit(self)
+        self.dest_point_x1_lbl.move(10, 420)
+        self.dest_point_x1_field.move(160, 416)
+
+        self.dest_point_y1_lbl = QLabel(self)
+        self.dest_point_y1_lbl.setText('Waypoint 1 Y Coord (ft): ')
+        self.dest_point_y1_field = QLineEdit(self)
+        self.dest_point_y1_lbl.move(10, 440)
+        self.dest_point_y1_field.move(160, 436)
+
+        self.dest_point_x2_lbl = QLabel(self)
+        self.dest_point_x2_lbl.setText('Waypoint 2 X Coord (ft): ')
+        self.dest_point_x2_field = QLineEdit(self)
+        self.dest_point_x2_lbl.move(10, 460)
+        self.dest_point_x2_field.move(160, 456)
+
+        self.dest_point_y2_lbl = QLabel(self)
+        self.dest_point_y2_lbl.setText('Waypoint 2 Y Coord (ft): ')
+        self.dest_point_y2_field = QLineEdit(self)
+        self.dest_point_y2_lbl.move(10, 480)
+        self.dest_point_y2_field.move(160, 476)
+
+        self.dest_point_x3_lbl = QLabel(self)
+        self.dest_point_x3_lbl.setText('Waypoint 3 X Coord (ft): ')
+        self.dest_point_x3_field = QLineEdit(self)
+        self.dest_point_x3_lbl.move(10, 500)
+        self.dest_point_x3_field.move(160, 496)
+
+        self.dest_point_y3_lbl = QLabel(self)
+        self.dest_point_y3_lbl.setText('Waypoint 3 Y Coord (ft): ')
+        self.dest_point_y3_field = QLineEdit(self)
+        self.dest_point_y3_lbl.move(10, 520)
+        self.dest_point_y3_field.move(160, 516)
+
         self.dest_orientation_lbl = QLabel(self)
         self.dest_orientation_lbl.setText('Desired End Orientation (deg): ')
         self.dest_orientation_field = QLineEdit(self)
-        self.dest_orientation_lbl.move(10, 420)
-        self.dest_orientation_field.move(160, 416)
+        self.dest_orientation_lbl.move(10, 540)
+        self.dest_orientation_field.move(160, 536)
 
         self.time_to_take_lbl = QLabel(self)
         self.time_to_take_lbl.setText('Desired Amount of Time (s): ')
         self.time_to_take_field = QLineEdit(self)
-        self.time_to_take_lbl.move(10, 440)
-        self.time_to_take_field.move(160, 436)
+        self.time_to_take_lbl.move(10, 560)
+        self.time_to_take_field.move(160, 556)
         
         self.set_dest_button = QPushButton('Set Path', self)
-        self.set_dest_button.move(160, 460)
+        self.set_dest_button.move(160, 580)
         self.set_dest_button.clicked[bool].connect(self.setDest)
 
         # Specify Circle to Move in
         self.circle_radius_lbl = QLabel(self)
         self.circle_radius_lbl.setText('Desired Radius (ft): ')
         self.circle_radius_field = QLineEdit(self)
-        self.circle_radius_lbl.move(10, 500)
-        self.circle_radius_field.move(160, 496)
+        self.circle_radius_lbl.move(10, 620)
+        self.circle_radius_field.move(220, 616)
+        self.circle_radius_lbl = QLabel(self)
+
+        self.circle2_radius_lbl = QLabel(self)
+        self.circle2_radius_lbl.setText('Radius of Second Circle for Figure 8 (ft): ')
+        self.circle2_radius_field = QLineEdit(self)
+        self.circle2_radius_lbl.move(10, 640)
+        self.circle2_radius_field.move(220, 636)
 
         self.circle_center_dir_lbl = QLabel(self)
         self.circle_center_dir_lbl.setText('Direction of circle center (deg): ')
         self.circle_center_dir_field = QLineEdit(self)
-        self.circle_center_dir_lbl.move(10, 520)
-        self.circle_center_dir_field.move(160, 516)
+        self.circle_center_dir_lbl.move(10, 660)
+        self.circle_center_dir_field.move(220, 656)
 
         self.circle_time_lbl = QLabel(self)
-        self.circle_time_lbl.setText('Time per Revolution (s): ')
+        self.circle_time_lbl.setText('Desired Amount of Time (s): ')
         self.circle_time_field = QLineEdit(self)
-        self.circle_time_lbl.move(10, 540)
-        self.circle_time_field.move(160, 536)
+        self.circle_time_lbl.move(10, 680)
+        self.circle_time_field.move(220, 676)
         
         self.set_circle_button = QPushButton('Set Path', self)
-        self.set_circle_button.move(160, 560)
+        self.set_circle_button.move(220, 700)
         self.set_circle_button.clicked[bool].connect(self.setCircle)
 
         # Specify Rectangle to Move in
         self.rectangle_side1_lbl = QLabel(self)
         self.rectangle_side1_lbl.setText('First Side Length (ft): ')
         self.rectangle_side1_field = QLineEdit(self)
-        self.rectangle_side1_lbl.move(10, 600)
-        self.rectangle_side1_field.move(160, 596)
+        self.rectangle_side1_lbl.move(10, 740)
+        self.rectangle_side1_field.move(160, 736)
 
         self.rectangle_side2_lbl = QLabel(self)
         self.rectangle_side2_lbl.setText('Second Side Length (ft): ')
         self.rectangle_side2_field = QLineEdit(self)
-        self.rectangle_side2_lbl.move(10, 620)
-        self.rectangle_side2_field.move(160, 616)
+        self.rectangle_side2_lbl.move(10, 760)
+        self.rectangle_side2_field.move(160, 756)
 
         self.rectangle_inclination_lbl = QLabel(self)
         self.rectangle_inclination_lbl.setText('Inclination (deg): ')
         self.rectangle_inclination_field = QLineEdit(self)
-        self.rectangle_inclination_lbl.move(10, 640)
-        self.rectangle_inclination_field.move(160, 636)
+        self.rectangle_inclination_lbl.move(10, 780)
+        self.rectangle_inclination_field.move(160, 776)
 
         self.rectangle_time_lbl = QLabel(self)
-        self.rectangle_time_lbl.setText('Time per Revolution (s): ')
+        self.rectangle_time_lbl.setText('Desired Amount of Time (s): ')
         self.rectangle_time_field = QLineEdit(self)
-        self.rectangle_time_lbl.move(10, 660)
-        self.rectangle_time_field.move(160, 656)
+        self.rectangle_time_lbl.move(10, 800)
+        self.rectangle_time_field.move(160, 796)
         
         self.set_rectangle_button = QPushButton('Set Path', self)
-        self.set_rectangle_button.move(160, 680)
+        self.set_rectangle_button.move(160, 820)
         self.set_rectangle_button.clicked[bool].connect(self.setRectangle)
 
-        # Specify Rectangle to Travel On
-
-        self.setGeometry(200, 200, 500, 800)
+        self.setGeometry(10, 30, 400, 850)
         self.setWindowTitle('Robot Menu')
         self.show()
 
@@ -513,6 +603,20 @@ class RobotMenu(QWidget):
         global my_car, control_mode
         dest_x = str_to_float(self.dest_point_x_field.text())
         dest_y = str_to_float(self.dest_point_y_field.text())
+        waypoints = []
+        if len(self.dest_point_x1_field.text()) > 0 and len(self.dest_point_y1_field.text()) > 0:
+            dest_x1 = str_to_float(self.dest_point_x1_field.text())
+            dest_y1 = str_to_float(self.dest_point_y1_field.text())
+            waypoints.append((dest_x1, dest_y1))
+            if len(self.dest_point_x2_field.text()) > 0 and len(self.dest_point_y2_field.text()) > 0:
+                dest_x2 = str_to_float(self.dest_point_x2_field.text())
+                dest_y2 = str_to_float(self.dest_point_y2_field.text())
+                waypoints.append((dest_x2, dest_y2))
+                if len(self.dest_point_x3_field.text()) > 0 and len(self.dest_point_y3_field.text()) > 0:
+                    dest_x3 = str_to_float(self.dest_point_x3_field.text())
+                    dest_y3 = str_to_float(self.dest_point_y3_field.text())
+                    waypoints.append((dest_x3, dest_y3))
+        waypoints.append((dest_x, dest_y))
         dest_orientation = str_to_float(self.dest_orientation_field.text())
         dest_orientation %= 360
         time_to_take = str_to_float(self.time_to_take_field.text())
@@ -523,14 +627,20 @@ class RobotMenu(QWidget):
             self.alert_msg.setText('An error has occurred')
             self.alert_msg.setInformativeText('Zero or negative time specified: %fs' % time_to_take)
             self.alert_msg.setStandardButtons(QMessageBox.Ok)
-            # self.alert_msg.buttonClicked.connect(msgbtn)
             retval = self.alert_msg.exec_()
             return
 
         # check for speed > 15 ft/s
-        dist_x = dest_x - my_car.xpos_actual
-        dist_y = dest_y - my_car.ypos_actual
-        distance = math.sqrt(dist_x * dist_x + dist_y * dist_y)
+        distance = 0
+        for i in range(len(waypoints)):
+            if i == 0:
+                distance += point_dist((my_car.xpos_actual, my_car.ypos_actual), waypoints[i])
+            else:
+                distance += point_dist(waypoints[i - 1], waypoints[i])
+        print(distance)
+        # dist_x = dest_x - my_car.xpos_actual
+        # dist_y = dest_y - my_car.ypos_actual
+        # distance = math.sqrt(dist_x * dist_x + dist_y * dist_y)
         if (distance / time_to_take) > MAX_SPEED:
             # alert('Desired execution requires a speed greater than 15 ft/s')
             self.alert_msg = QMessageBox()
@@ -542,8 +652,10 @@ class RobotMenu(QWidget):
             # self.alert_msg.buttonClicked.connect(msgbtn)
             retval = self.alert_msg.exec_()
             return
-        my_car.dest_x = dest_x
-        my_car.dest_y = dest_y
+        # my_car.dest_x = dest_x
+        # my_car.dest_y = dest_y
+        my_car.curr_wp = 0
+        my_car.waypoints = waypoints
         my_car.dest_orientation = dest_orientation
         my_car.time_to_take = time_to_take
         control_mode = 'point_execution'
@@ -552,10 +664,29 @@ class RobotMenu(QWidget):
     def setCircle(self):
         global my_car, control_mode
         circle_radius = str_to_float(self.circle_radius_field.text())
+        circle2_radius = str_to_float(self.circle2_radius_field.text())
         circle_center_dir = str_to_float(self.circle_center_dir_field.text())
         circle_center_dir %= 360
         # circle_dest_orientation = str_to_float(self.circle_dest_orientation_field.text())
         circle_time = str_to_float(self.circle_time_field.text())
+        if circle_radius < 0 or circle2_radius < 0:
+            self.alert_msg = QMessageBox()
+            self.alert_msg.setIcon(QMessageBox.Information)
+            self.alert_msg.setWindowTitle("Simulation Error")
+            self.alert_msg.setText('An error has occurred')
+            self.alert_msg.setInformativeText('Negative radius specified: %f,%fs' % (circle_radius, circle2_radius))
+            self.alert_msg.setStandardButtons(QMessageBox.Ok)
+            retval = self.alert_msg.exec_()
+            return
+        if circle_radius == 0 and circle2_radius > 0:
+            self.alert_msg = QMessageBox()
+            self.alert_msg.setIcon(QMessageBox.Information)
+            self.alert_msg.setWindowTitle("Simulation Error")
+            self.alert_msg.setText('An error has occurred')
+            self.alert_msg.setInformativeText('Please set the radius of the first circle first')
+            self.alert_msg.setStandardButtons(QMessageBox.Ok)
+            retval = self.alert_msg.exec_()
+            return
         if circle_time <= 0:
             self.alert_msg = QMessageBox()
             self.alert_msg.setIcon(QMessageBox.Information)
@@ -565,8 +696,8 @@ class RobotMenu(QWidget):
             self.alert_msg.setStandardButtons(QMessageBox.Ok)
             retval = self.alert_msg.exec_()
             return
-        angular_vel = 2 * math.pi / circle_time
-        linear_vel = angular_vel * circle_radius
+        linear_dist = 2 * math.pi * circle_radius + 2 * math.pi * circle2_radius
+        linear_vel = linear_dist / circle_time
         if linear_vel > MAX_SPEED:
             # alert('Desired execution requires a speed greater than 15 ft/s')
             self.alert_msg = QMessageBox()
@@ -578,14 +709,17 @@ class RobotMenu(QWidget):
             # self.alert_msg.buttonClicked.connect(msgbtn)
             retval = self.alert_msg.exec_()
             return
-
-        # circle_center_x = my_car.xpos_actual + circle_radius * math.cos(circle_center_dir)
-        # circle_center_y = my_car.ypos_actual + circle_radius * math.sin(circle_center_dir)
         my_car.circle_center_dir = circle_center_dir
-        # my_car.desired_circle_center = (circle_center_x, circle_center_y)
         my_car.desired_circle_radius = circle_radius
+        my_car.desired_circle2_radius = circle2_radius
         my_car.time_to_take = circle_time
         my_car.direction_set = False
+        my_car.end_point = (my_car.xpos_actual, my_car.ypos_actual)
+        my_car.circle_idx = 0
+        my_car.at_start = True
+        my_car.circle_count = 1
+        if circle2_radius > 0:
+            my_car.circle_count += 1
         control_mode = 'circle_execution'
         pass
 
@@ -639,13 +773,18 @@ class RobotMenu(QWidget):
         point1 = (my_car.xpos_actual + side1 * math.cos(phi), my_car.ypos_actual + side1 * math.sin(phi))
         point2 = (my_car.xpos_actual + diag_len * math.cos(angle_rad), my_car.ypos_actual + diag_len * math.sin(angle_rad))
         point3 = (my_car.xpos_actual + side2 * math.cos(iphi), my_car.ypos_actual + side2 * math.sin(iphi))
-        my_car.rect_points = [point0, point1, point2, point3]
-        print(my_car.rect_points)
+        # my_car.rect_points = [point0, point1, point2, point3]
+        # print(my_car.rect_points)
+        # my_car.time_to_take = rect_time
+        # my_car.last_rect_point = 0
+        # my_car.rect_side1 = side1
+        # my_car.rect_side2 = side2
+        # control_mode = 'rectangle_execution'
+        my_car.curr_wp = 0
+        my_car.waypoints = [point1, point2, point3, point0]
+        my_car.dest_orientation = my_car.yaw
         my_car.time_to_take = rect_time
-        my_car.last_rect_point = 0
-        my_car.rect_side1 = side1
-        my_car.rect_side2 = side2
-        control_mode = 'rectangle_execution'
+        control_mode = 'point_execution'
         pass
 
     def setFigure8(self):
