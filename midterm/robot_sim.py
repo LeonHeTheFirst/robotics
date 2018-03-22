@@ -143,7 +143,6 @@ class Car():
                 self.find_psi_from_desired_vel_cartesian(self.x_vel, self.y_vel, self.r_vel)
                 if math.fabs(dist_x) <= DIST_PRECISION and math.fabs(dist_y) <= DIST_PRECISION:
                     self.curr_wp += 1
-                    print(self.curr_wp)
                     if self.curr_wp == len(self.waypoints):
                         control_mode = 'slowdown'
                         self.accelerate(0, 0)
@@ -165,8 +164,6 @@ class Car():
                 else:
                     self.r_vel = -1 * dist_yaw / self.time_to_take
                 self.find_psi_from_desired_vel_cartesian(self.x_vel, self.y_vel, self.r_vel)
-            # self.accelerate(dist_x / self.time_to_take, dist_y / self.time_to_take)
-            # self.find_psi_from_desired_vel_cartesian(self.x_vel, self.y_vel, self.r_vel)
             self.time_to_take -= (1 / FRAMERATE)
             if self.time_to_take < 0:
                 self.time_to_take = 1
@@ -175,7 +172,6 @@ class Car():
             dist_y = self.end_point[1] - self.ypos_actual
             dist = math.sqrt(dist_x * dist_x + dist_y * dist_y)
             if math.fabs(dist_x) <= 3 * DIST_PRECISION and math.fabs(dist_y) <= 3 * DIST_PRECISION:
-                print('got here')
                 if self.circle_idx == self.circle_count:
                     self.x_vel = 0
                     self.y_vel = 0
@@ -189,7 +185,6 @@ class Car():
             if self.at_start and math.fabs(dist_x) > 3 * DIST_PRECISION and math.fabs(dist_y) > 3 * DIST_PRECISION:
                 if self.circle_idx == 0:
                     self.circle_idx += 1
-                print(self.circle_idx)
                 self.at_start = False
                 return
             if not self.direction_set:
@@ -215,7 +210,6 @@ class Car():
             linear_vel = linear_dist / self.time_to_take
             angular_vel1 = linear_vel / self.desired_circle_radius
             angular_vel2 = linear_vel / self.desired_circle2_radius
-            # linear_vel = angular_vel * self.desired_circle_radius
             inverse_rad = 1 / WHEEL_RADIUS
             size_const = (CAR_HALF_LENGTH + CAR_HALF_WIDTH)
             self.psi_1 = inverse_rad * (linear_vel + size_const * angular_vel1)
@@ -261,7 +255,6 @@ class Car():
             dist_y = self.waypoints[-1][1] - self.ypos_actual
             dist_yaw = self.dest_orientation - self.yaw
             if math.fabs(dist_x) > DIST_PRECISION or math.fabs(dist_y) > DIST_PRECISION:
-                print('going back')
                 control_mode = 'point_execution'
                 self.curr_wp -= 1
                 self.time_to_take = 1
@@ -640,7 +633,6 @@ class RobotMenu(QWidget):
                 distance += point_dist((my_car.xpos_actual, my_car.ypos_actual), waypoints[i])
             else:
                 distance += point_dist(waypoints[i - 1], waypoints[i])
-        print(distance)
         # dist_x = dest_x - my_car.xpos_actual
         # dist_y = dest_y - my_car.ypos_actual
         # distance = math.sqrt(dist_x * dist_x + dist_y * dist_y)
@@ -770,19 +762,10 @@ class RobotMenu(QWidget):
         diag_len = math.sqrt(side1 ** 2 + side2 ** 2)
         phi = math.acos(side1 / diag_len) + angle_rad
         iphi = phi - math.pi / 2
-        print(phi)
-        print(iphi)
         point0 = (my_car.xpos_actual, my_car.ypos_actual)
         point1 = (my_car.xpos_actual + side1 * math.cos(phi), my_car.ypos_actual + side1 * math.sin(phi))
         point2 = (my_car.xpos_actual + diag_len * math.cos(angle_rad), my_car.ypos_actual + diag_len * math.sin(angle_rad))
         point3 = (my_car.xpos_actual + side2 * math.cos(iphi), my_car.ypos_actual + side2 * math.sin(iphi))
-        # my_car.rect_points = [point0, point1, point2, point3]
-        # print(my_car.rect_points)
-        # my_car.time_to_take = rect_time
-        # my_car.last_rect_point = 0
-        # my_car.rect_side1 = side1
-        # my_car.rect_side2 = side2
-        # control_mode = 'rectangle_execution'
         my_car.curr_wp = 0
         my_car.waypoints = [point1, point2, point3, point0]
         my_car.dest_orientation = my_car.yaw
