@@ -1,0 +1,3 @@
+https://github.com/Eelviny/nxt-python
+https://github.com/Eelviny/nxt-python-examples
+http://www.nxtprograms.com/NXT2/segway/index.html
